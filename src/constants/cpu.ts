@@ -1,0 +1,10 @@
+/** IA defensiva P2 — ver docs/06-game-design.md */
+export const CPU_LEAD_TIME = 0.1
+export const CPU_SPEED_FACTOR = 0.7
+export const CPU_REACTION_MS = 80
+export const CPU_ERROR_HALF = 0.03
+export const CPU_ERROR_REFRESH_MS = 500
+/** Posição de recuo quando o disco está no campo adversário. */
+export const CPU_DEFENSE_X = -0.72
+/** Disco neste lado de X: CPU persegue / contra-ataca. */
+export const CPU_ATTACK_THRESHOLD_X = -0.2

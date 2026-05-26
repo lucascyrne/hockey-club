@@ -1,0 +1,14 @@
+/* Sync com src/theme/palette.ts */
+:root {
+  --bg-deep: #070612;
+  --bg-alt: #12082a;
+  --neon-cyan: #00f0ff;
+  --neon-pink: #ff3d8a;
+  --neon-gold: #ffbf00;
+  --neon-yellow: #ffe600;
+  --accent-purple: #7b5cff;
+  --text-primary: #e8ecf8;
+  --text-muted: rgba(232, 236, 248, 0.65);
+  --font-display: 'Orbitron', system-ui, sans-serif;
+  --font-ui: 'Chakra Petch', system-ui, sans-serif;
+}
