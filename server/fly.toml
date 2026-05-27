@@ -2,6 +2,7 @@ app = "hockey-table-ws"
 primary_region = "gru"
 
 [build]
+  dockerfile = "../Dockerfile"
 
 [env]
   PORT = "8787"

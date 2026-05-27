@@ -20,9 +20,14 @@ import {
 } from './rooms.js'
 
 const PORT = Number(process.env.PORT ?? 8787)
+function normalizeOriginUrl(s: string): string {
+  const t = s.trim()
+  return t.endsWith('/') ? t.slice(0, -1) : t
+}
+
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
   .split(',')
-  .map((s) => s.trim())
+  .map(normalizeOriginUrl)
   .filter(Boolean)
 
 const rateWindow = new Map<WebSocket, { count: number; resetAt: number }>()
@@ -30,7 +35,10 @@ const MAX_MSG_PER_SEC = 40
 
 function isOriginAllowed(origin: string | undefined): boolean {
   if (!origin) return true
-  return ALLOWED_ORIGINS.some((o) => origin === o || origin.startsWith(o))
+  const normalized = normalizeOriginUrl(origin)
+  return ALLOWED_ORIGINS.some(
+    (o) => normalized === o || normalized.startsWith(o),
+  )
 }
 
 function checkRate(ws: WebSocket): boolean {
