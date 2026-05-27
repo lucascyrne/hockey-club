@@ -5,6 +5,12 @@ import { PADDLE_INPUT_SPEED } from '../constants/paddle'
 import { TABLE_SURFACE_TOP } from '../constants/physics'
 import { IS_DEV } from '../lib/env'
 import { getGoalCamera } from '../lib/cameraRegistry'
+import {
+  PointerSession,
+  pointerToNdc,
+  pointerToNdcFullscreen,
+} from '../lib/pointerSession'
+import { getSplitAxis } from '../stores/layoutStore'
 import { cameraMode } from '../stores/cameraMode'
 import { isLocal2pMode, isVsCpuMode } from '../stores/sessionStore'
 import { useGameStore } from '../stores/gameStore'
@@ -73,35 +79,6 @@ const GAME_KEYS = new Set([
   'ArrowRight',
 ])
 
-function resolvePointerPlayer(clientX: number, rect: DOMRect): PlayerId {
-  if (!isLocal2pMode()) return 1
-  const relX = (clientX - rect.left) / rect.width
-  return relX < 0.5 ? 1 : 2
-}
-
-function pointerToNdc(
-  clientX: number,
-  clientY: number,
-  rect: DOMRect,
-  playerId: PlayerId,
-): THREE.Vector2 {
-  const localX = clientX - rect.left
-  const localY = clientY - rect.top
-  const ndc = new THREE.Vector2()
-
-  if (isLocal2pMode()) {
-    const halfW = rect.width / 2
-    const vx = playerId === 1 ? localX : localX - halfW
-    ndc.x = (vx / halfW) * 2 - 1
-  } else {
-    ndc.x = (localX / rect.width) * 2 - 1
-  }
-
-  ndc.y = -(localY / rect.height) * 2 + 1
-  return ndc
-}
-
-/** Mouse (padrão) + teclado opcional; raycast com câmera de gol por jogador. */
 export function usePaddleInput() {
   const { camera: defaultCamera, gl } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
@@ -113,20 +90,34 @@ export function usePaddleInput() {
   const pointerNdc = useMemo(() => new THREE.Vector2(), [])
   const keyboardRaf = useRef<number | null>(null)
   const lastKeyboardTime = useRef(performance.now())
+  const pointerSession = useRef(new PointerSession())
 
-  const projectPointer = (clientX: number, clientY: number) => {
+  const projectPointer = (e: PointerEvent) => {
     const rect = gl.domElement.getBoundingClientRect()
-    const playerId = resolvePointerPlayer(clientX, rect)
+    const local2p = isLocal2pMode()
+    const axis = getSplitAxis()
+
+    let playerId: PlayerId = 1
+    if (local2p) {
+      const bound = pointerSession.current.get(e.pointerId)
+      playerId =
+        bound ??
+        (() => {
+          pointerSession.current.assign(e.pointerId, e.clientX, e.clientY, rect, axis)
+          return pointerSession.current.get(e.pointerId)!
+        })()
+    }
 
     if (playerId === 1 && isP1KeyboardActive()) return
 
     const cam =
-      getGoalCamera(playerId) ??
-      (playerId === 1 ? defaultCamera : null)
+      getGoalCamera(playerId) ?? (playerId === 1 ? defaultCamera : null)
     if (!cam) return
 
-    const ndc = pointerToNdc(clientX, clientY, rect, playerId)
-    pointerNdc.copy(ndc)
+    const ndc = local2p
+      ? pointerToNdc(e.clientX, e.clientY, rect, playerId, axis)
+      : pointerToNdcFullscreen(e.clientX, e.clientY, rect)
+    pointerNdc.set(ndc.x, ndc.y)
     raycaster.setFromCamera(pointerNdc, cam)
     if (!raycaster.ray.intersectPlane(plane, hit)) return
 
@@ -137,6 +128,9 @@ export function usePaddleInput() {
   }
 
   useEffect(() => {
+    const canvas = gl.domElement
+    const session = pointerSession.current
+
     const setKey = (code: string, down: boolean) => {
       switch (code) {
         case 'KeyW':
@@ -190,21 +184,50 @@ export function usePaddleInput() {
       keyboardRaf.current = requestAnimationFrame(tickKeyboard)
     }
 
+    const onPointerDown = (e: PointerEvent) => {
+      if (!canProcessInput()) return
+      if (IS_DEV && cameraMode.value === 'orbit') return
+      if (!isLocal2pMode()) return
+
+      const rect = canvas.getBoundingClientRect()
+      session.assign(e.pointerId, e.clientX, e.clientY, rect, getSplitAxis())
+      canvas.setPointerCapture(e.pointerId)
+      projectPointer(e)
+    }
+
     const onPointerMove = (e: PointerEvent) => {
       if (!canProcessInput()) return
       if (IS_DEV && cameraMode.value === 'orbit') return
-      projectPointer(e.clientX, e.clientY)
+      projectPointer(e)
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      session.release(e.pointerId)
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId)
+      }
+    }
+
+    const onPointerCancel = (e: PointerEvent) => {
+      session.release(e.pointerId)
     }
 
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
-    window.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('pointerup', onPointerUp)
+    canvas.addEventListener('pointercancel', onPointerCancel)
     keyboardRaf.current = requestAnimationFrame(tickKeyboard)
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerup', onPointerUp)
+      canvas.removeEventListener('pointercancel', onPointerCancel)
+      session.clear()
       if (keyboardRaf.current !== null) {
         cancelAnimationFrame(keyboardRaf.current)
       }

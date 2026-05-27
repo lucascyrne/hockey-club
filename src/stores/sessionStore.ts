@@ -10,6 +10,8 @@ type SessionStore = {
   screen: SessionScreen
   matchMode: MatchMode
   localPlayerId: PlayerId
+  hudDrawerOpen: boolean
+  setHudDrawerOpen: (open: boolean) => void
   enterMenu: () => void
   startMatch: (mode: MatchMode) => void
   exitMatch: () => void
@@ -19,9 +21,11 @@ export const useSessionStore = create<SessionStore>((set) => ({
   screen: 'menu',
   matchMode: 'vsCpu',
   localPlayerId: 1,
+  hudDrawerOpen: false,
+  setHudDrawerOpen: (open) => set({ hudDrawerOpen: open }),
 
   enterMenu: () => {
-    set({ screen: 'menu' })
+    set({ screen: 'menu', hudDrawerOpen: false })
   },
 
   startMatch: (mode) => {
@@ -31,13 +35,14 @@ export const useSessionStore = create<SessionStore>((set) => ({
       screen: 'match',
       matchMode: mode,
       localPlayerId: 1,
+      hudDrawerOpen: false,
     })
   },
 
   exitMatch: () => {
     useGameStore.getState().resetMatch()
     resetPaddlesToSpawn()
-    set({ screen: 'menu' })
+    set({ screen: 'menu', hudDrawerOpen: false })
   },
 }))
 

@@ -6,11 +6,11 @@ export const pt: Translations = {
     navModes: 'Modo de jogo',
     vsCpu: {
       label: 'Jogar vs CPU',
-      hint: 'Câmera atrás do seu gol · controle principal: mouse',
+      hint: 'Câmera atrás do seu gol · toque ou mouse na mesa',
     },
     local2p: {
       label: 'Dois jogadores',
-      hint: 'Tela esq./dir. · mouse em cada metade (WASD + setas opcionais)',
+      hint: 'Frente a frente · metade de baixo / de cima (toque em cada área)',
     },
     online: {
       label: 'Jogar online',
@@ -34,13 +34,18 @@ export const pt: Translations = {
   },
   hud: {
     menu: 'Menu',
+    openMenu: 'Menu do jogo',
+    closeMenu: 'Fechar',
+    help: 'Dúvidas',
+    language: 'Idioma',
     restart: 'Recomeçar',
     goal: 'GOL!',
     victory: 'VITÓRIA!',
     cpuWon: 'CPU VENCEU',
     p2Won: 'P2 VENCEU',
-    hintVsCpu: 'Mouse na mesa (padrão) · WASD opcional · Espaço · R',
-    hint2p: 'Mouse por metade (padrão) · WASD esq. · setas dir.',
+    hintVsCpu: 'Toque ou mouse na mesa · WASD opcional · Espaço · R',
+    hint2p: 'Metades esq./dir. · toque ou mouse em cada lado · WASD / setas',
+    hint2pHorizontal: 'Metade de baixo = P1 · de cima = P2 · um dedo por jogador',
   },
   lang: {
     pt: 'Português',

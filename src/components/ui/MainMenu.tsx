@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { useTranslation } from '../../i18n'
 
+import { useGameLayout } from '../../hooks/useGameLayout'
 import { MenuHeroCanvas } from '../menu/MenuHeroCanvas'
 
 import type { MatchMode } from '../../stores/sessionStore'
@@ -23,6 +24,7 @@ export function MainMenu() {
   const startMatch = useSessionStore((s) => s.startMatch)
 
   const { t } = useTranslation()
+  const { reduceMenuFx } = useGameLayout()
 
 
 
@@ -40,9 +42,12 @@ export function MainMenu() {
 
     <div className="main-menu">
 
-      <MenuHeroCanvas />
+      {!reduceMenuFx && <MenuHeroCanvas />}
 
-      <div className="main-menu__vignette" aria-hidden />
+      <div
+        className={`main-menu__vignette${reduceMenuFx ? ' main-menu__vignette--static' : ''}`}
+        aria-hidden
+      />
 
       <div className="main-menu__toolbar ui-toolbar">
 

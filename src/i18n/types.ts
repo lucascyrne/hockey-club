@@ -31,6 +31,10 @@ export type Translations = {
   }
   hud: {
     menu: string
+    openMenu: string
+    closeMenu: string
+    help: string
+    language: string
     restart: string
     goal: string
     victory: string
@@ -38,6 +42,7 @@ export type Translations = {
     p2Won: string
     hintVsCpu: string
     hint2p: string
+    hint2pHorizontal: string
   }
   lang: {
     pt: string

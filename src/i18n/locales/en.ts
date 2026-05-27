@@ -6,11 +6,11 @@ export const en: Translations = {
     navModes: 'Game mode',
     vsCpu: {
       label: 'Play vs CPU',
-      hint: 'Camera behind your goal · primary control: mouse',
+      hint: 'Camera behind your goal · touch or mouse on the table',
     },
     local2p: {
       label: 'Two players',
-      hint: 'Left/right split · mouse on each half (optional WASD + arrows)',
+      hint: 'Face to face · bottom / top half (touch your area)',
     },
     online: {
       label: 'Play online',
@@ -34,13 +34,18 @@ export const en: Translations = {
   },
   hud: {
     menu: 'Menu',
+    openMenu: 'Game menu',
+    closeMenu: 'Close',
+    help: 'Help',
+    language: 'Language',
     restart: 'Play again',
     goal: 'GOAL!',
     victory: 'YOU WIN!',
     cpuWon: 'CPU WINS',
     p2Won: 'P2 WINS',
-    hintVsCpu: 'Mouse on table (default) · optional WASD · Space · R',
-    hint2p: 'Mouse per half (default) · WASD left · arrows right',
+    hintVsCpu: 'Touch or mouse on table · optional WASD · Space · R',
+    hint2p: 'Left/right halves · touch or mouse each side · WASD / arrows',
+    hint2pHorizontal: 'Bottom = P1 · top = P2 · one finger per player',
   },
   lang: {
     pt: 'Português',

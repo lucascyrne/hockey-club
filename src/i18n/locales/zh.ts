@@ -6,11 +6,11 @@ export const zh: Translations = {
     navModes: '游戏模式',
     vsCpu: {
       label: '对战 CPU',
-      hint: '球门后方视角 · 主要操作：鼠标',
+      hint: '球门后方视角 · 触屏或鼠标控制球桌',
     },
     local2p: {
       label: '双人本地',
-      hint: '左右分屏 · 各半屏鼠标（可选 WASD + 方向键）',
+      hint: '面对面 · 下半屏 / 上半屏（各触各自区域）',
     },
     online: {
       label: '在线对战',
@@ -34,13 +34,18 @@ export const zh: Translations = {
   },
   hud: {
     menu: '菜单',
+    openMenu: '游戏菜单',
+    closeMenu: '关闭',
+    help: '帮助',
+    language: '语言',
     restart: '再来一局',
     goal: '进球！',
     victory: '胜利！',
     cpuWon: 'CPU 获胜',
     p2Won: 'P2 获胜',
-    hintVsCpu: '鼠标控制球桌（默认）· 可选 WASD · 空格 · R',
-    hint2p: '各半屏鼠标（默认）· 左侧 WASD · 右侧方向键',
+    hintVsCpu: '触屏或鼠标控制球桌 · 可选 WASD · 空格 · R',
+    hint2p: '左右半屏 · 各侧触屏或鼠标 · WASD / 方向键',
+    hint2pHorizontal: '下半屏 = P1 · 上半屏 = P2 · 每人一指',
   },
   lang: {
     pt: 'Português',

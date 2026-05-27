@@ -1,15 +1,13 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { COLORS } from '../../constants/table'
+import { getSplitRects } from '../../lib/splitViewport'
 import { getGoalCamera } from '../../lib/cameraRegistry'
+import { getSplitAxis } from '../../stores/layoutStore'
 import { isLocal2pMode } from '../../stores/sessionStore'
 
 const clearColor = new THREE.Color(COLORS.background)
 
-/**
- * Renderiza a mesma cena em duas metades (P1 esq. / P2 dir.) com câmeras de gol.
- * Prioridade alta: limpa o frame e desenha após o render padrão do R3F.
- */
 export function SplitScreenRenderer() {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
@@ -22,25 +20,23 @@ export function SplitScreenRenderer() {
     const cam2 = getGoalCamera(2)
     if (!cam1 || !cam2) return
 
-    const w = size.width
-    const h = size.height
-    const halfW = Math.floor(w / 2)
-    const rightW = w - halfW
+    const axis = getSplitAxis()
+    const { p1, p2 } = getSplitRects(size.width, size.height, axis)
 
     gl.setScissorTest(true)
     gl.setClearColor(clearColor)
     gl.clear(true, true, true)
 
-    cam1.aspect = halfW / h
+    cam1.aspect = p1.w / p1.h
     cam1.updateProjectionMatrix()
-    gl.setViewport(0, 0, halfW, h)
-    gl.setScissor(0, 0, halfW, h)
+    gl.setViewport(p1.x, p1.y, p1.w, p1.h)
+    gl.setScissor(p1.x, p1.y, p1.w, p1.h)
     gl.render(scene, cam1)
 
-    cam2.aspect = rightW / h
+    cam2.aspect = p2.w / p2.h
     cam2.updateProjectionMatrix()
-    gl.setViewport(halfW, 0, rightW, h)
-    gl.setScissor(halfW, 0, rightW, h)
+    gl.setViewport(p2.x, p2.y, p2.w, p2.h)
+    gl.setScissor(p2.x, p2.y, p2.w, p2.h)
     gl.render(scene, cam2)
 
     gl.setScissorTest(false)

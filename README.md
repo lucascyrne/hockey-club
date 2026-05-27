@@ -78,11 +78,22 @@ Interface em **português**, **inglês**, **espanhol** e **chinês simplificado*
 | `npm run typecheck` | TypeScript |
 | `npm run preview` | Preview do build |
 
+## Mobile
+
+Portrait: 2P com split **horizontal** (frente a frente); landscape/desktop: split **lateral**. Multitouch no 2P. Detalhes em [`docs/08-mobile.md`](docs/08-mobile.md).
+
+## Deploy (Vercel) e iframe no portfólio
+
+Build: `npm run build` → pasta `dist`. Configuração em [`vercel.json`](./vercel.json).
+
+Para incorporar em [horizonte.dev.br](https://horizonte.dev.br), ver [`docs/embedding.md`](./docs/embedding.md) (headers `frame-ancestors` e exemplo de `<iframe>`).
+
 ## Documentação
 
 - [docs/PLANNING.md](./docs/PLANNING.md)
 - [docs/06-game-design.md](./docs/06-game-design.md)
 - [docs/07-roadmap.md](./docs/07-roadmap.md)
+- [docs/08-mobile.md](./docs/08-mobile.md)
 
 ## Stack
 

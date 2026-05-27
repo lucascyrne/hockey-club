@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
-import { useRef } from 'react'
+import { useRef, type RefObject } from 'react'
 import * as THREE from 'three'
-import type { Mesh } from 'three'
+import type { Group, Mesh, Object3D } from 'three'
 import {
   TABLE_BORDER_HEIGHT,
   TABLE_BORDER_THICKNESS,
@@ -11,6 +11,7 @@ import {
   COLORS,
 } from '../../constants/table'
 import { GOAL_HALF_WIDTH } from '../../constants/game'
+import { arenaEmissive } from '../../lib/arenaPulse'
 import { useArenaFxStore } from '../../stores/arenaFxStore'
 import { TableAirHoles } from './TableAirHoles'
 import { TableLogo } from './TableLogo'
@@ -23,6 +24,50 @@ import {
 
 const SURFACE_Y = TABLE_SURFACE_THICKNESS / 2
 const BORDER_Y = TABLE_BORDER_HEIGHT / 2 + TABLE_SURFACE_THICKNESS
+
+const pulseBases = new WeakMap<THREE.MeshStandardMaterial, number>()
+
+function applyArenaPulseToGroup(
+  root: Object3D | null,
+  elapsedTime: number,
+) {
+  if (!root) return
+  const pulse = useArenaFxStore.getState().pulse
+  const goal = useArenaFxStore.getState().goalFlash
+
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return
+    const mat = child.material
+    if (!(mat instanceof THREE.MeshStandardMaterial) || !mat.emissive) return
+
+    if (!pulseBases.has(mat)) {
+      pulseBases.set(mat, mat.emissiveIntensity)
+    }
+    const base = pulseBases.get(mat)!
+
+    if (child.userData.arenaPulseLed) {
+      mat.emissiveIntensity =
+        arenaEmissive(0.55, pulse, goal, 0.45, 0.35) +
+        Math.sin(elapsedTime * 2.2) * 0.18
+    } else {
+      mat.emissiveIntensity = arenaEmissive(base, pulse, goal)
+    }
+  })
+}
+
+function TableArenaPulse({
+  railsRef,
+  skirtRef,
+}: {
+  railsRef: RefObject<Group | null>
+  skirtRef: RefObject<Group | null>
+}) {
+  useFrame(({ clock }) => {
+    applyArenaPulseToGroup(railsRef.current, clock.elapsedTime)
+    applyArenaPulseToGroup(skirtRef.current, clock.elapsedTime)
+  })
+  return null
+}
 
 /** Corpo da mesa + plano de jogo brilhante. */
 function TableBody() {
@@ -154,18 +199,8 @@ function RailLedStrip({
 }) {
   const ref = useRef<Mesh>(null)
 
-  useFrame(({ clock }) => {
-    const mesh = ref.current
-    if (!mesh) return
-    const mat = mesh.material as THREE.MeshStandardMaterial
-    const pulse = useArenaFxStore.getState().pulse
-    const goal = useArenaFxStore.getState().goalFlash
-    mat.emissiveIntensity =
-      0.55 + Math.sin(clock.elapsedTime * 2.2) * 0.18 + pulse * 0.45 + goal * 0.35
-  })
-
   return (
-    <mesh ref={ref} position={position}>
+    <mesh ref={ref} position={position} userData={{ arenaPulseLed: true }}>
       <boxGeometry args={[size[0], 0.012, size[1]]} />
       <meshStandardMaterial
         color={COLORS.tableBorder}
@@ -207,7 +242,7 @@ function EndRailSegment({
 }
 
 /** Bordas elevadas estilo air hockey real: base + cap arredondado + LED. */
-function TableRails() {
+function TableRails({ groupRef }: { groupRef: RefObject<Group | null> }) {
   const bt = TABLE_BORDER_THICKNESS
   const bh = TABLE_BORDER_HEIGHT
   const capY = BORDER_Y + bh / 2 - 0.008
@@ -243,7 +278,7 @@ function TableRails() {
   )
 
   return (
-    <group name="TableRails">
+    <group ref={groupRef} name="TableRails">
       <EndRailSegment signX={-1} signZ={-1} />
       <EndRailSegment signX={-1} signZ={1} />
       <EndRailSegment signX={1} signZ={-1} />
@@ -317,11 +352,11 @@ function TableSurfaceWaves() {
 }
 
 /** Painel vertical tipo arcade cabinet sob a borda. */
-function TableSkirt() {
+function TableSkirt({ groupRef }: { groupRef: RefObject<Group | null> }) {
   const skirtH = 0.05
   const y = -skirtH / 2 + 0.002
   return (
-    <group name="TableSkirt">
+    <group ref={groupRef} name="TableSkirt">
       <mesh position={[0, y, TABLE_HD + 0.06]}>
         <boxGeometry args={[TABLE_WIDTH + 0.12, skirtH, 0.02]} />
         <meshStandardMaterial
@@ -371,15 +406,19 @@ function TableGoalMouths() {
 }
 
 export function Table() {
+  const railsRef = useRef<Group>(null)
+  const skirtRef = useRef<Group>(null)
+
   return (
     <group name="Table">
+      <TableArenaPulse railsRef={railsRef} skirtRef={skirtRef} />
       <TableBody />
-      <TableSkirt />
+      <TableSkirt groupRef={skirtRef} />
       <TableSurfaceWaves />
       <TableAirHoles />
       <TableMarkings />
       <TableGoalMouths />
-      <TableRails />
+      <TableRails groupRef={railsRef} />
       <TableLogo />
     </group>
   )

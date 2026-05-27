@@ -1,6 +1,7 @@
 import { Leva } from 'leva'
 import { AudioHost } from '../components/audio/AudioHost'
 import { ArenaFxBridge } from '../components/game/ArenaFxBridge'
+import { LayoutSync } from '../components/layout/LayoutSync'
 import { LocaleSync } from '../components/i18n/LocaleSync'
 import { DevOnly } from '../components/dev/DevOnly'
 import { MatchShell } from '../components/ui/MatchShell'
@@ -14,6 +15,7 @@ export function App() {
 
   return (
     <div className="app">
+      <LayoutSync />
       <LocaleSync />
       <AudioHost />
       <ArenaFxBridge />

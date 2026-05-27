@@ -4,7 +4,7 @@
 
 1. **Menu inicial** — hero 3D em loop (CPU × CPU, sem input); CTAs por cima. Escolha: vs CPU, dois jogadores ou online (desabilitado). Ao sair do menu, a demo para e o `gameStore` é resetado.
 2. **vs CPU** — câmera fixa atrás do gol do P1 (+X); mouse/WASD; CPU no P2.
-3. **2P local** — split **lateral** (P1 esquerda / P2 direita); duas câmeras de gol (`GoalCamera`) + render em scissor (`SplitScreenRenderer`); **mouse por metade** (padrão); WASD/setas opcionais.
+3. **2P local** — split adaptativo: **horizontal** em portrait (P1 embaixo / P2 em cima, frente a frente) ou **lateral** em landscape (P1 esq. / P2 dir.); `SplitScreenRenderer` + multitouch (`PointerSession`); WASD/setas opcionais no desktop.
 4. **Online** (futuro) — mesma câmera que vs CPU, lado conforme `localPlayerId` da sessão.
 
 ## Dimensões e layout
@@ -71,10 +71,14 @@ Não usar pathfinding; movimento direto no plano XZ com clamp.
 
 | Modo | Padrão | Opcional |
 |------|--------|----------|
-| vs CPU | Mouse no canvas | WASD |
-| 2P local | Mouse na metade esquerda (P1) ou direita (P2) | WASD / setas |
+| vs CPU | Toque ou mouse no canvas | WASD |
+| 2P local | Toque/mouse na metade do jogador (layout conforme orientação) | WASD / setas |
 
-Raycast usa a câmera de gol do jogador; no 2P o NDC é calculado por viewport (metade da tela).
+Raycast usa a câmera de gol do jogador; NDC por viewport (`splitViewport.ts`). Em 2P, cada `pointerId` controla um jogador.
+
+## Mobile
+
+Ver [`08-mobile.md`](./08-mobile.md) — câmera `mobileVsCpu` / `mobile2p`, `GameHudDrawer`, placar horizontal no topo (vs CPU) e `split` dupla-face no 2P, split horizontal em portrait, safe-area e menu sem hero 3D em `pointer: coarse`.
 
 ## Demo do menu (hero)
 

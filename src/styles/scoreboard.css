@@ -1,0 +1,160 @@
+@import './tokens.css';
+
+.scoreboard {
+  pointer-events: none;
+  z-index: 3;
+  display: flex;
+  align-items: stretch;
+}
+
+.scoreboard__face {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.scoreboard--top {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
+.scoreboard--top > .scoreboard__face {
+  flex-direction: row;
+}
+
+.scoreboard--center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  scale: 0.92;
+}
+
+.scoreboard--split {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 0.75rem;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+
+.scoreboard--split .scoreboard__face {
+  position: relative;
+  flex: 0 0 auto;
+  transform-origin: center center;
+}
+
+.scoreboard--split .scoreboard__face--p2 {
+  transform: rotate(180deg);
+}
+
+.scoreboard__panel {
+  min-width: 4.25rem;
+  padding: 0.3rem 0.85rem 0.4rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(7, 6, 18, 0.9) 0%, rgba(7, 6, 18, 0.55) 100%);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+}
+
+.scoreboard--top .scoreboard__panel {
+  border-top: none;
+}
+
+.scoreboard--center .scoreboard__panel,
+.scoreboard--split .scoreboard__panel {
+  border-radius: 6px;
+}
+
+.scoreboard__panel--p1 {
+  border-color: rgba(255, 61, 138, 0.5);
+}
+
+.scoreboard--top .scoreboard__panel--p1 {
+  border-radius: 0 0 0 8px;
+}
+
+.scoreboard__panel--p2 {
+  border-color: rgba(255, 191, 0, 0.5);
+}
+
+.scoreboard--top .scoreboard__panel--p2 {
+  border-radius: 0 0 8px 0;
+}
+
+.scoreboard__center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.65rem;
+  background: rgba(7, 6, 18, 0.92);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.35);
+}
+
+.scoreboard--center .scoreboard__center,
+.scoreboard--split .scoreboard__center {
+  border-bottom: none;
+  border-left: 1px solid rgba(0, 240, 255, 0.25);
+  border-right: 1px solid rgba(0, 240, 255, 0.25);
+}
+
+.scoreboard__name {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.scoreboard__name--p1 {
+  color: var(--neon-pink);
+}
+
+.scoreboard__name--p2 {
+  color: var(--neon-gold);
+}
+
+.scoreboard__num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.scoreboard--top .scoreboard__num {
+  font-size: 1.75rem;
+}
+
+.scoreboard__num--p1 {
+  color: var(--neon-pink);
+}
+
+.scoreboard__num--p2 {
+  color: var(--neon-gold);
+}
+
+.scoreboard__target {
+  font-family: var(--font-ui);
+  font-size: 0.6rem;
+  opacity: 0.55;
+}
+
+.scoreboard__divider {
+  width: 1px;
+  background: rgba(0, 240, 255, 0.25);
+  align-self: stretch;
+}
