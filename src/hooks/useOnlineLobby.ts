@@ -10,6 +10,8 @@ export function useOnlineLobbyWs() {
   const setError = useOnlineStore((s) => s.setError)
 
   useEffect(() => {
+    let opened = false
+
     if (!getWsUrl()) {
       setError('ws_missing')
       return
@@ -18,6 +20,7 @@ export function useOnlineLobbyWs() {
     setStatus('connecting')
     const ok = connectWs({
       onOpen: () => {
+        opened = true
         setError(null)
         setStatus('lobby')
       },
@@ -26,7 +29,10 @@ export function useOnlineLobbyWs() {
         const { screen, matchMode } = useSessionStore.getState()
 
         if (screen === 'match' && matchMode === 'online') return
-        if (status === 'connecting') return
+        if (status === 'connecting' && !opened) {
+          setError('connect_error')
+          return
+        }
 
         if (status === 'playing') {
           useOnlineStore.getState().setDisconnectMessage(true)

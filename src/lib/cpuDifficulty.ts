@@ -19,6 +19,8 @@ export type CpuProfile = {
   hitStrength: number
   defenseWeight: number
   attackAggression: number
+  clearWindowMs: { min: number; max: number }
+  wallBias: number
   dwellOnHalfMs: { min: number; max: number } | null
 }
 
@@ -29,21 +31,25 @@ const PROFILE_3: CpuProfile = {
   errorHalf: CPU_ERROR_HALF,
   errorRefreshMs: CPU_ERROR_REFRESH_MS,
   hitStrength: 1,
-  defenseWeight: 0.15,
-  attackAggression: 1,
+  defenseWeight: 0.62,
+  attackAggression: 0.56,
+  clearWindowMs: { min: 800, max: 1500 },
+  wallBias: 0.72,
   dwellOnHalfMs: null,
 }
 
 const PROFILE_2: CpuProfile = {
   reactionMs: 200,
-  speedFactor: 0.55,
-  leadTime: 0.08,
+  speedFactor: 0.6,     // ligeiramente mais rápido
+  leadTime: 0.09,
   errorHalf: 0.04,
   errorRefreshMs: 650,
   hitStrength: 0.82,
-  defenseWeight: 0.62,
+  defenseWeight: 0.72,
   attackAggression: 0.42,
-  dwellOnHalfMs: { min: 450, max: 950 },
+  clearWindowMs: { min: 1100, max: 2100 },
+  wallBias: 0.6,
+  dwellOnHalfMs: { min: 450, max: 900 },
 }
 
 const PROFILE_1: CpuProfile = {
@@ -53,9 +59,11 @@ const PROFILE_1: CpuProfile = {
   errorHalf: 0.055,
   errorRefreshMs: 850,
   hitStrength: 0.68,
-  defenseWeight: 0.9,
+  defenseWeight: 0.84,
   attackAggression: 0.2,
-  dwellOnHalfMs: { min: 550, max: 1400 },
+  clearWindowMs: { min: 1600, max: 2600 },
+  wallBias: 0.45,
+  dwellOnHalfMs: { min: 500, max: 1200 },
 }
 
 const PROFILES: Record<CpuDifficulty, CpuProfile> = {

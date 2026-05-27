@@ -33,6 +33,7 @@ export type C2S =
   | { t: 'state'; state: StatePayload }
   | { t: 'goal'; scorer: NetPlayerId }
   | { t: 'leave' }
+  | { t: 'ping'; ts: number }
 
 export type S2C =
   | { t: 'room'; code: string; role: NetPlayerId }
@@ -42,6 +43,7 @@ export type S2C =
   | { t: 'remoteInput'; seq: number; px: number; pz: number }
   | { t: 'goal'; scorer: NetPlayerId }
   | { t: 'error'; code: string }
+  | { t: 'pong'; ts: number }
 
 export const ROOM_CODE_LEN = 6
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -52,7 +54,7 @@ export function normalizeCode(raw: string): string | null {
   if ([...code].some((c) => !CODE_CHARS.includes(c))) return null
   return code
 }
-export const TICK_MS = 50
+export const TICK_MS = 33
 export const MAX_MSG_BYTES = 4096
 
 export function parseC2S(raw: string): C2S | null {

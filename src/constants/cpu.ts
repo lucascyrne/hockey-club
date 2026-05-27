@@ -8,3 +8,6 @@ export const CPU_ERROR_REFRESH_MS = 500
 export const CPU_DEFENSE_X = -0.72
 /** Disco neste lado de X: CPU persegue / contra-ataca. */
 export const CPU_ATTACK_THRESHOLD_X = -0.2
+/** Zona neutra: disco lento aqui obriga ambos os CPUs a atacar. */
+export const CPU_CENTER_ENGAGE_X = 0.22
+export const CPU_SLOW_PUCK_SPEED = 0.65

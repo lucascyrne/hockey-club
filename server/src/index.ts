@@ -73,6 +73,9 @@ function handleMessage(ws: WebSocket, raw: Buffer | string) {
     case 'join':
       handleJoin(ws, msg.code)
       break
+    case 'ping':
+      sendJson(ws, { t: 'pong', ts: msg.ts })
+      break
     case 'ready':
     case 'start':
     case 'input':
@@ -206,6 +209,6 @@ wss.on('connection', (ws, req) => {
   })
 })
 
-httpServer.listen(PORT, () => {
-  console.log(`hockey-table ws server on :${PORT} (path /ws)`)
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`hockey-table ws server on 0.0.0.0:${PORT} (path /ws)`)
 })

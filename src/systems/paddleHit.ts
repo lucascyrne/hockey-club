@@ -44,6 +44,7 @@ export function resolvePaddlePuckCollision(
       paddleZ,
       paddleVel,
       fallbackAwayX,
+      fallbackAwayX > 0 ? -1 : 1,
     )
   }
 

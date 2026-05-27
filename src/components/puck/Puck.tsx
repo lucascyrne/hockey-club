@@ -35,7 +35,8 @@ import {
 import { paddleMotionState } from '../../stores/paddleMotionState'
 import { resolvePaddlePuckCollision } from '../../systems/paddleHit'
 import { enforcePuckTableBounds } from '../../systems/puckBounds'
-import { resolvePuckPaddleOverlap } from '../../systems/puckContact'
+import { resolvePuckPaddleOverlaps } from '../../systems/puckContact'
+import { snapPuckToTablePlane } from '../../systems/puckBounds'
 import {
   computeChuteTarget,
   lerpChutePosition,
@@ -54,7 +55,6 @@ import {
   stepGuestPuckInterpolation,
 } from '../../lib/onlineNetState'
 
-const MAX_Y_SPEED = 0.35
 const PUCK_HALF_HEIGHT = PUCK_HEIGHT / 2
 const HIT_COOLDOWN_MS = 70
 const FLASH_DECAY = 8
@@ -66,9 +66,7 @@ function clampPuckVelocity(body: RapierRigidBody, maxSpeed: number) {
   let ny = y
   let nz = z
 
-  if (Math.abs(ny) > MAX_Y_SPEED) {
-    ny = Math.sign(ny) * MAX_Y_SPEED
-  }
+  if (ny !== 0) ny = 0
 
   const speedXZ = Math.sqrt(nx * nx + nz * nz)
   const totalSpeed = Math.sqrt(nx * nx + ny * ny + nz * nz)
@@ -310,37 +308,48 @@ export function Puck() {
     const v = body.linvel()
     setPuckSample({ x: t.x, z: t.z, vx: v.x, vz: v.z })
 
+    if (flow === 'play') {
+      enforcePuckTableBounds(body)
+      snapPuckToTablePlane(body)
+    }
+
     if (phase === 'playing') {
-      const scorer = detectGoal(t.x, t.z)
+      const pos = body.translation()
+      const scorer = detectGoal(pos.x, pos.z)
       if (scorer !== null) {
         useGameStore.getState().onGoal(scorer)
         if (isOnlineHost()) broadcastGoal(scorer)
         if (useGameStore.getState().phase === 'gameOver') return
-        const { from, to } = computeChuteTarget(scorer, t.x, t.y, t.z)
+        const { from, to } = computeChuteTarget(scorer, pos.x, pos.y, pos.z)
         usePuckFlowStore.getState().startChute(scorer, from, to)
         return
       }
-      enforcePuckTableBounds(body)
 
-      const pos = body.translation()
-      let px = pos.x
-      let pz = pos.z
       const p1 = paddleMotionState.p1
       const p2 = paddleMotionState.p2
 
-      if (
-        resolvePuckPaddleOverlap(body, px, pz, p1.x, p1.z, getPaddleVelocity(1), 1)
-      ) {
-        const next = body.translation()
-        px = next.x
-        pz = next.z
-      }
-      resolvePuckPaddleOverlap(body, px, pz, p2.x, p2.z, getPaddleVelocity(2), -1)
+      resolvePuckPaddleOverlaps(body, pos.x, pos.z, [
+        {
+          x: p1.x,
+          z: p1.z,
+          vel: getPaddleVelocity(1),
+          awayX: 1,
+          clearTowardEnemyX: -1,
+        },
+        {
+          x: p2.x,
+          z: p2.z,
+          vel: getPaddleVelocity(2),
+          awayX: -1,
+          clearTowardEnemyX: 1,
+        },
+      ])
+      snapPuckToTablePlane(body)
     }
   })
 
-  useFrame(() => {
-    if (isOnlineGuest()) stepGuestPuckInterpolation()
+  useFrame((_state, delta) => {
+    if (isOnlineGuest()) stepGuestPuckInterpolation(delta)
 
     const body = bodyRef.current
     if (!body) return

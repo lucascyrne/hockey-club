@@ -37,12 +37,35 @@ export function resetOnlineNetState() {
   lastState = null
 }
 
-/** Interpola disco do convidado em direção ao snapshot (chamar em useFrame). */
-export function stepGuestPuckInterpolation(alpha = 0.35) {
+/** Limiar de desvio para snap imediato (evita "teletransporte" lento). */
+const SNAP_THRESHOLD = 0.2
+
+/**
+ * Interpola disco do convidado em direção ao snapshot.
+ * - Snap imediato se o desvio for muito grande (reduz atraso perceptível).
+ * - Alpha adaptativo: mais agressivo quando longe, mais suave ao aproximar.
+ */
+export function stepGuestPuckInterpolation(delta: number) {
   const c = onlineGuestPuck.current
   const t = onlineGuestPuck.target
-  c.x += (t.x - c.x) * alpha
-  c.z += (t.z - c.z) * alpha
+
+  const dx = t.x - c.x
+  const dz = t.z - c.z
+  const dist = Math.hypot(dx, dz)
+
+  if (dist > SNAP_THRESHOLD) {
+    // Snap direto para eliminar lag acumulado
+    c.x = t.x
+    c.z = t.z
+    c.vx = t.vx
+    c.vz = t.vz
+    return
+  }
+
+  // Alpha baseado em delta real (60 Hz → ~0.36, 30 Hz → ~0.55)
+  const alpha = 1 - Math.pow(0.015, delta)
+  c.x += dx * alpha
+  c.z += dz * alpha
   c.vx += (t.vx - c.vx) * alpha
   c.vz += (t.vz - c.vz) * alpha
 }
