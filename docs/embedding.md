@@ -1,10 +1,13 @@
 # Incorporar no portfólio (iframe)
 
-O deploy na Vercel envia `Content-Security-Policy: frame-ancestors` permitindo embed apenas em:
+O deploy na Vercel envia `Content-Security-Policy: frame-ancestors` (definido em [`config/embed.json`](../config/embed.json), sincronizado para [`vercel.json`](../vercel.json) no `npm run build`):
 
-- `https://horizonte.dev.br`
-- `https://www.horizonte.dev.br`
+- `https://horizonte.dev.br` e `https://www.horizonte.dev.br` (portfólio)
+- `http://localhost:3000` (portfólio Next.js em dev)
+- `https://hockey-club-bay.vercel.app` (preview Vercel do portfólio, se aplicável)
 - abertura direta do jogo (`'self'`)
+
+Em `npm run dev` / `preview`, o Vite inclui também `localhost:5173` para testar o iframe localmente.
 
 ## No site horizonte.dev.br
 
@@ -31,8 +34,12 @@ Evite `sandbox` restritivo no iframe (WebGL e pointer events precisam de permiss
 
 ## Alterar domínios permitidos
 
-Edite [`config/embed.json`](../config/embed.json) e o valor em [`vercel.json`](../vercel.json) (produção).
+1. Edite [`config/embed.json`](../config/embed.json) (`frameAncestors` = produção; `frameAncestorsDev` = só Vite).
+2. Execute `npm run embed:sync-vercel` (ou `npm run build`) para atualizar [`vercel.json`](../vercel.json).
+
+Cada origem deve ser explícita (sem `https://*` em CSP).
 
 ## Desenvolvimento local
 
-`npm run dev` / `npm run preview` também permitem embed a partir de `localhost:3000` e `localhost:5173` para testar o iframe no portfólio em dev.
+- Portfólio em `http://localhost:3000` embutindo o jogo na **Vercel**: já permitido em `frameAncestors`.
+- Jogo em `npm run dev` (`localhost:5173`): origens extra via `frameAncestorsDev` no Vite.

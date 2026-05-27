@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/src/index.ts",
-    "build": "tsc -b && vite build",
+    "embed:sync-vercel": "node scripts/sync-vercel-embed.mjs",
+    "build": "npm run embed:sync-vercel && tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "start:server": "tsx server/src/index.ts"
