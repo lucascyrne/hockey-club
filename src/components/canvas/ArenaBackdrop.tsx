@@ -10,9 +10,10 @@ import { useSessionStore } from '../../stores/sessionStore'
 
 type ArenaBackdropProps = {
   reactive?: boolean
+  dimmed?: boolean
 }
 
-export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
+export function ArenaBackdrop({ reactive = true, dimmed = false }: ArenaBackdropProps) {
   const is2p = useSessionStore((s) => s.matchMode === 'local2p')
   const { isMobile } = useGameLayout()
   const mobileVsCpu = isMobile && !is2p
@@ -22,8 +23,21 @@ export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
   const sideLeftMat = useRef<MeshStandardMaterial>(null)
   const sideRightMat = useRef<MeshStandardMaterial>(null)
 
-  const floorColor = useMemo(() => new THREE.Color(THEME.colors.backgroundAlt), [])
-  const wallColor = useMemo(() => new THREE.Color(THEME.colors.background), [])
+  const floorColor = useMemo(() => {
+    const c = new THREE.Color(THEME.colors.backgroundAlt)
+    if (dimmed) c.multiplyScalar(0.65)
+    return c
+  }, [dimmed])
+  const wallColor = useMemo(() => {
+    const c = new THREE.Color(THEME.colors.background)
+    if (dimmed) c.multiplyScalar(0.65)
+    return c
+  }, [dimmed])
+
+  const floorEmissive = dimmed ? 0.02 : 0.04
+  const wallEmissive = dimmed ? 0.03 : 0.06
+  const sideEmissiveL = dimmed ? 0.025 : 0.05
+  const sideEmissiveR = dimmed ? 0.02 : 0.04
 
   const floorRadius = is2p ? 22 : mobileVsCpu ? 20 : 14
   const backWall = is2p
@@ -41,16 +55,16 @@ export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
     const goal = reactive ? useArenaFxStore.getState().goalFlash : 0
 
     if (floorMat.current) {
-      floorMat.current.emissiveIntensity = arenaEmissive(0.04, pulse, goal, 0.2, 0.35)
+      floorMat.current.emissiveIntensity = arenaEmissive(floorEmissive, pulse, goal, 0.2, 0.35)
     }
     if (wallMat.current) {
-      wallMat.current.emissiveIntensity = arenaEmissive(0.06, pulse, goal, 0.25, 0.5)
+      wallMat.current.emissiveIntensity = arenaEmissive(wallEmissive, pulse, goal, 0.25, 0.5)
     }
     if (sideLeftMat.current) {
-      sideLeftMat.current.emissiveIntensity = arenaEmissive(0.05, pulse, goal, 0.22, 0.4)
+      sideLeftMat.current.emissiveIntensity = arenaEmissive(sideEmissiveL, pulse, goal, 0.22, 0.4)
     }
     if (sideRightMat.current) {
-      sideRightMat.current.emissiveIntensity = arenaEmissive(0.04, pulse, goal, 0.22, 0.4)
+      sideRightMat.current.emissiveIntensity = arenaEmissive(sideEmissiveR, pulse, goal, 0.22, 0.4)
     }
   })
 
@@ -62,7 +76,7 @@ export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
           ref={floorMat}
           color={floorColor}
           emissive={THEME.colors.accentPurple}
-          emissiveIntensity={0.04}
+          emissiveIntensity={floorEmissive}
           roughness={0.95}
           metalness={0}
         />
@@ -74,7 +88,7 @@ export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
           ref={wallMat}
           color={wallColor}
           emissive={THEME.colors.tableBorder}
-          emissiveIntensity={0.06}
+          emissiveIntensity={wallEmissive}
           roughness={0.9}
         />
       </mesh>
@@ -85,7 +99,7 @@ export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
           ref={sideLeftMat}
           color={wallColor}
           emissive={THEME.colors.accentPurple}
-          emissiveIntensity={0.05}
+          emissiveIntensity={sideEmissiveL}
           roughness={0.92}
         />
       </mesh>
@@ -96,7 +110,7 @@ export function ArenaBackdrop({ reactive = true }: ArenaBackdropProps) {
           ref={sideRightMat}
           color={wallColor}
           emissive={THEME.colors.tableNeonPink}
-          emissiveIntensity={0.04}
+          emissiveIntensity={sideEmissiveR}
           roughness={0.92}
         />
       </mesh>

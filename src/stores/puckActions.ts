@@ -16,6 +16,10 @@ export function unregisterPuckActions() {
   actions = null
 }
 
+export function stageFaceoffHold(spawn: PuckSpawnState) {
+  actions?.faceoff({ ...spawn, vx: 0, vy: 0, vz: 0 })
+}
+
 export function triggerFaceoff(spawn: PuckSpawnState) {
   actions?.faceoff(spawn)
   playFaceoffSfx()

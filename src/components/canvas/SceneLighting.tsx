@@ -1,21 +1,24 @@
 import { THEME } from '../../theme/palette'
 
+const HERO_FOG = '#04030a'
+
 type SceneLightingProps = {
   variant?: 'match' | 'hero'
 }
 
 export function SceneLighting({ variant = 'match' }: SceneLightingProps) {
-  const fogNear = variant === 'hero' ? 4 : 3
-  const fogFar = variant === 'hero' ? 18 : 14
-  const shadows = variant === 'match'
+  const isHero = variant === 'hero'
+  const fogNear = isHero ? 3.5 : 3
+  const fogFar = isHero ? 14 : 14
+  const fogColor = isHero ? HERO_FOG : THEME.colors.fog
 
   return (
     <>
-      <ambientLight intensity={variant === 'hero' ? 0.42 : 0.48} />
+      <ambientLight intensity={isHero ? 0.2 : 0.48} />
       <directionalLight
         position={[4, 9, 6]}
-        intensity={variant === 'hero' ? 1.1 : 1.3}
-        castShadow={shadows}
+        intensity={isHero ? 0.5 : 1.3}
+        castShadow={!isHero}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
         shadow-camera-near={0.5}
@@ -25,13 +28,27 @@ export function SceneLighting({ variant = 'match' }: SceneLightingProps) {
         shadow-camera-top={4}
         shadow-camera-bottom={-4}
       />
-      <pointLight
-        position={[0, 3, 0]}
-        intensity={0.35}
-        color={THEME.colors.tableBorder}
-        distance={8}
-      />
-      <fog attach="fog" args={[THEME.colors.fog, fogNear, fogFar]} />
+      {isHero ? (
+        <spotLight
+          position={[0, 7, 0.5]}
+          angle={0.42}
+          penumbra={0.4}
+          intensity={2}
+          color={THEME.colors.tableBorder}
+          distance={16}
+          decay={2}
+        >
+          <object3D attach="target" position={[0, 0, 0]} />
+        </spotLight>
+      ) : (
+        <pointLight
+          position={[0, 3, 0]}
+          intensity={0.35}
+          color={THEME.colors.tableBorder}
+          distance={8}
+        />
+      )}
+      <fog attach="fog" args={[fogColor, fogNear, fogFar]} />
     </>
   )
 }

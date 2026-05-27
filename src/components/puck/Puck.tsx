@@ -6,12 +6,15 @@ import {
   type RapierRigidBody,
 } from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import * as THREE from 'three'
 import { COLORS } from '../../constants/table'
 import { THEME } from '../../theme/palette'
 import {
-  MAX_PUCK_SPEED,
+  DEMO_PUCK_CHUTE_MS,
+  PUCK_CHUTE_MS,
+} from '../../constants/game'
+import {
   PUCK_HEIGHT,
   PUCK_MASS,
   PUCK_PHYSICS,
@@ -23,24 +26,40 @@ import { getPaddleVelocity, parsePaddlePlayerId } from '../../lib/paddleRegistry
 import { setPuckSample } from '../../lib/puckTracker'
 import { isMenuDemoActive } from '../../stores/menuDemoStore'
 import { useGameStore } from '../../stores/gameStore'
+import { usePuckFlowStore } from '../../stores/puckFlowStore'
 import { useArenaFxStore } from '../../stores/arenaFxStore'
 import {
   registerPuckActions,
-  triggerFaceoff,
   unregisterPuckActions,
 } from '../../stores/puckActions'
+import { paddleMotionState } from '../../stores/paddleMotionState'
 import { resolvePaddlePuckCollision } from '../../systems/paddleHit'
 import { enforcePuckTableBounds } from '../../systems/puckBounds'
+import { resolvePuckPaddleOverlap } from '../../systems/puckContact'
+import {
+  computeChuteTarget,
+  lerpChutePosition,
+} from '../../systems/puckGoalSequence'
+import { beginRoundCountdown } from '../../systems/roundCountdown'
 import { getLateralFaceoffSpawn, type PuckSpawnState } from '../../systems/puckSpawn'
 import { restartCurrentMatch } from '../../systems/restartMatch'
 import { detectGoal } from '../../systems/rules'
+import { getCpuProfile } from '../../lib/cpuDifficulty'
+import { getMaxPuckSpeed, getPuckLinearDamping } from '../../lib/puckFeel'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { isOnlineGuest, isOnlineHost } from '../../stores/sessionStore'
+import { broadcastGoal } from '../../hooks/useOnlineSync'
+import {
+  onlineGuestPuck,
+  stepGuestPuckInterpolation,
+} from '../../lib/onlineNetState'
 
 const MAX_Y_SPEED = 0.35
 const PUCK_HALF_HEIGHT = PUCK_HEIGHT / 2
 const HIT_COOLDOWN_MS = 70
 const FLASH_DECAY = 8
 
-function clampPuckVelocity(body: RapierRigidBody) {
+function clampPuckVelocity(body: RapierRigidBody, maxSpeed: number) {
   const linvel = body.linvel()
   const { x, y, z } = linvel
   let nx = x
@@ -54,13 +73,13 @@ function clampPuckVelocity(body: RapierRigidBody) {
   const speedXZ = Math.sqrt(nx * nx + nz * nz)
   const totalSpeed = Math.sqrt(nx * nx + ny * ny + nz * nz)
 
-  if (totalSpeed > MAX_PUCK_SPEED) {
-    const scale = MAX_PUCK_SPEED / totalSpeed
+  if (totalSpeed > maxSpeed) {
+    const scale = maxSpeed / totalSpeed
     nx *= scale
     ny *= scale
     nz *= scale
-  } else if (speedXZ > MAX_PUCK_SPEED) {
-    const scale = MAX_PUCK_SPEED / speedXZ
+  } else if (speedXZ > maxSpeed) {
+    const scale = maxSpeed / speedXZ
     nx *= scale
     nz *= scale
   }
@@ -77,7 +96,13 @@ function applySpawn(body: RapierRigidBody, spawn: PuckSpawnState) {
   body.wakeUp()
 }
 
-function PuckMesh({ flashRef }: { flashRef: RefObject<number> }) {
+function PuckMesh({
+  flashRef,
+  visible,
+}: {
+  flashRef: RefObject<number>
+  visible: boolean
+}) {
   const bodyMat = useRef<THREE.MeshStandardMaterial>(null)
   const rimMat = useRef<THREE.MeshStandardMaterial>(null)
 
@@ -96,7 +121,7 @@ function PuckMesh({ flashRef }: { flashRef: RefObject<number> }) {
   })
 
   return (
-    <group name="PuckMesh">
+    <group name="PuckMesh" visible={visible}>
       <mesh castShadow>
         <cylinderGeometry args={[PUCK_RADIUS, PUCK_RADIUS, PUCK_HEIGHT, 32]} />
         <meshStandardMaterial
@@ -127,6 +152,9 @@ export function Puck() {
   const bodyRef = useRef<RapierRigidBody>(null)
   const lastHitAt = useRef(0)
   const meshFlash = useRef(0)
+  const [meshVisible, setMeshVisible] = useState(true)
+
+  const chuteMs = () => (isMenuDemoActive() ? DEMO_PUCK_CHUTE_MS : PUCK_CHUTE_MS)
 
   useEffect(() => {
     registerPuckActions({
@@ -162,7 +190,8 @@ export function Puck() {
   }, [])
 
   const handleCollisionEnter = (payload: CollisionEnterPayload) => {
-    if (useGameStore.getState().phase !== 'playing') return
+    const phase = useGameStore.getState().phase
+    if (usePuckFlowStore.getState().flow !== 'play' || phase !== 'playing') return
 
     const now = performance.now()
     if (now - lastHitAt.current < HIT_COOLDOWN_MS) return
@@ -181,7 +210,20 @@ export function Puck() {
 
     const pt = other.translation()
     const paddleVel = getPaddleVelocity(playerId)
-    resolvePaddlePuckCollision(body, t.x, t.z, pt.x, pt.z, paddleVel)
+    const hitStrength =
+      playerId === 2
+        ? getCpuProfile(useSettingsStore.getState().cpuDifficulty).hitStrength
+        : 1
+    resolvePaddlePuckCollision(
+      body,
+      t.x,
+      t.z,
+      pt.x,
+      pt.z,
+      paddleVel,
+      playerId === 1 ? 1 : -1,
+      hitStrength,
+    )
 
     const v = body.linvel()
     const relSpeed = Math.hypot(v.x - paddleVel.x, v.z - paddleVel.z)
@@ -200,11 +242,11 @@ export function Puck() {
         return
       }
 
-      if (useGameStore.getState().phase !== 'playing') return
+      if (useGameStore.getState().phase === 'gameOver') return
 
-      if (e.code === 'Space') {
+      if (e.code === 'Space' && useGameStore.getState().phase === 'playing') {
         e.preventDefault()
-        triggerFaceoff(getLateralFaceoffSpawn())
+        beginRoundCountdown()
       }
     }
 
@@ -216,7 +258,53 @@ export function Puck() {
     const body = bodyRef.current
     if (!body) return
 
+    if (isOnlineGuest()) {
+      const s = onlineGuestPuck.current
+      const y = body.translation().y
+      body.setTranslation({ x: s.x, y, z: s.z }, true)
+      body.setLinvel({ x: s.vx, y: 0, z: s.vz }, true)
+      setPuckSample(s)
+      return
+    }
+
     const phase = useGameStore.getState().phase
+    const flow = usePuckFlowStore.getState().flow
+
+    if (phase === 'gameOver') {
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      return
+    }
+
+    if (flow === 'inChute') {
+      const { chuteStartMs, chuteFrom, chuteTo } = usePuckFlowStore.getState()
+      const elapsed = performance.now() - chuteStartMs
+      const t = elapsed / chuteMs()
+
+      if (t >= 1) {
+        const pos = chuteTo
+        body.setTranslation(pos, true)
+        body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        setMeshVisible(true)
+        usePuckFlowStore.getState().resetFlow()
+        beginRoundCountdown()
+        return
+      }
+
+      const pos = lerpChutePosition(chuteFrom, chuteTo, t)
+      body.setTranslation(pos, true)
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      setMeshVisible(t < 0.35)
+      setPuckSample({ x: pos.x, z: pos.z, vx: 0, vz: 0 })
+      return
+    }
+
+    if (flow === 'held') {
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      const pos = body.translation()
+      setPuckSample({ x: pos.x, z: pos.z, vx: 0, vz: 0 })
+      setMeshVisible(true)
+      return
+    }
 
     const t = body.translation()
     const v = body.linvel()
@@ -225,24 +313,50 @@ export function Puck() {
     if (phase === 'playing') {
       const scorer = detectGoal(t.x, t.z)
       if (scorer !== null) {
-        body.setLinvel({ x: 0, y: 0, z: 0 }, true)
         useGameStore.getState().onGoal(scorer)
+        if (isOnlineHost()) broadcastGoal(scorer)
+        if (useGameStore.getState().phase === 'gameOver') return
+        const { from, to } = computeChuteTarget(scorer, t.x, t.y, t.z)
+        usePuckFlowStore.getState().startChute(scorer, from, to)
         return
       }
       enforcePuckTableBounds(body)
-      return
-    }
 
-    if (phase === 'goal' || phase === 'gameOver') {
-      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      const pos = body.translation()
+      let px = pos.x
+      let pz = pos.z
+      const p1 = paddleMotionState.p1
+      const p2 = paddleMotionState.p2
+
+      if (
+        resolvePuckPaddleOverlap(body, px, pz, p1.x, p1.z, getPaddleVelocity(1), 1)
+      ) {
+        const next = body.translation()
+        px = next.x
+        pz = next.z
+      }
+      resolvePuckPaddleOverlap(body, px, pz, p2.x, p2.z, getPaddleVelocity(2), -1)
     }
   })
 
   useFrame(() => {
+    if (isOnlineGuest()) stepGuestPuckInterpolation()
+
     const body = bodyRef.current
-    if (!body || useGameStore.getState().phase !== 'playing') return
-    clampPuckVelocity(body)
+    if (!body) return
+
+    const airLevel = useSettingsStore.getState().airLevel
+    body.setLinearDamping(getPuckLinearDamping(airLevel))
+
+    const phase = useGameStore.getState().phase
+    const flow = usePuckFlowStore.getState().flow
+    if (phase === 'gameOver' || flow !== 'play') return
+
+    clampPuckVelocity(body, getMaxPuckSpeed(airLevel))
   })
+
+  const flow = usePuckFlowStore((s) => s.flow)
+  const colliderSensor = flow !== 'play'
 
   return (
     <RigidBody
@@ -262,8 +376,9 @@ export function Puck() {
         args={[PUCK_HALF_HEIGHT, PUCK_RADIUS]}
         friction={PUCK_PHYSICS.friction}
         restitution={PUCK_PHYSICS.restitution}
+        sensor={colliderSensor}
       />
-      <PuckMesh flashRef={meshFlash} />
+      <PuckMesh flashRef={meshFlash} visible={meshVisible} />
     </RigidBody>
   )
 }

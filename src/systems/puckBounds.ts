@@ -5,9 +5,11 @@ import {
   TABLE_PLAY_HALF_Z,
   WALL_PHYSICS,
 } from '../constants/physics'
+import { wallEscapeVelocity } from './puckContact'
 
 const PUCK_Y_MIN = PUCK_REST_Y - 0.001
 const PUCK_Y_MAX = PUCK_REST_Y + 0.006
+const WALL_MIN_ESCAPE = 0.9
 
 /**
  * Rede de segurança contra tunneling em alta velocidade:
@@ -21,24 +23,30 @@ export function enforcePuckTableBounds(body: RapierRigidBody) {
   let vy = v.y
   let vz = v.z
   let changed = false
+  let escapeX: 0 | 1 | -1 = 0
+  let escapeZ: 0 | 1 | -1 = 0
 
   if (x < -TABLE_PLAY_HALF_X) {
     x = -TABLE_PLAY_HALF_X
     vx = Math.abs(vx) * WALL_PHYSICS.restitution
+    escapeX = 1
     changed = true
   } else if (x > TABLE_PLAY_HALF_X) {
     x = TABLE_PLAY_HALF_X
     vx = -Math.abs(vx) * WALL_PHYSICS.restitution
+    escapeX = -1
     changed = true
   }
 
   if (z < -TABLE_PLAY_HALF_Z) {
     z = -TABLE_PLAY_HALF_Z
     vz = Math.abs(vz) * WALL_PHYSICS.restitution
+    escapeZ = 1
     changed = true
   } else if (z > TABLE_PLAY_HALF_Z) {
     z = TABLE_PLAY_HALF_Z
     vz = -Math.abs(vz) * WALL_PHYSICS.restitution
+    escapeZ = -1
     changed = true
   }
 
@@ -53,6 +61,12 @@ export function enforcePuckTableBounds(body: RapierRigidBody) {
   }
 
   if (!changed) return
+
+  if (escapeX !== 0 || escapeZ !== 0) {
+    const escaped = wallEscapeVelocity(vx, vz, escapeX, escapeZ, WALL_MIN_ESCAPE)
+    vx = escaped.vx
+    vz = escaped.vz
+  }
 
   body.setTranslation({ x, y, z }, true)
   body.setLinvel({ x: vx, y: vy, z: vz }, true)

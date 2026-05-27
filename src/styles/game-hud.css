@@ -133,6 +133,10 @@
   pointer-events: none;
 }
 
+.game-hud__overlay--goal {
+  pointer-events: none;
+}
+
 .game-hud__overlay--game-over {
   flex-direction: column;
   gap: 1.25rem;

@@ -59,6 +59,50 @@
   transform: rotate(180deg);
 }
 
+.scoreboard--dual-top {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scoreboard__slot {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  display: flex;
+  justify-content: center;
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+  box-sizing: border-box;
+}
+
+.scoreboard__slot--p1 {
+  left: 0;
+}
+
+.scoreboard__slot--p2 {
+  left: 50%;
+}
+
+.scoreboard--dual-top .scoreboard__face {
+  flex-direction: row;
+}
+
+.scoreboard--dual-top .scoreboard__panel {
+  border-top: none;
+}
+
+.scoreboard--dual-top .scoreboard__panel--p1 {
+  border-radius: 0 0 0 8px;
+}
+
+.scoreboard--dual-top .scoreboard__panel--p2 {
+  border-radius: 0 0 8px 0;
+}
+
+.scoreboard--dual-top .scoreboard__num {
+  font-size: 1.75rem;
+}
+
 .scoreboard__panel {
   min-width: 4.25rem;
   padding: 0.3rem 0.85rem 0.4rem;

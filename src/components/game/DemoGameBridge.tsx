@@ -2,11 +2,11 @@ import { useEffect } from 'react'
 import { useDemoPuckStallWatch } from '../../hooks/useDemoPuckStallWatch'
 import { useMenuDemoStore } from '../../stores/menuDemoStore'
 import { useGameStore } from '../../stores/gameStore'
+import { resetPaddlesToSpawn } from '../../systems/resetRound'
 import { triggerFaceoff } from '../../stores/puckActions'
 import { getLateralFaceoffSpawn } from '../../systems/puckSpawn'
-import { resetPaddlesToSpawn } from '../../systems/resetRound'
 
-/** Liga gols do hero da landing (pausa → saque lateral). */
+/** Demo do menu: stall watch + reset ao montar/desmontar. Gol contínuo em Puck.tsx. */
 export function DemoGameBridge() {
   const setDemoActive = useMenuDemoStore((s) => s.setActive)
   useDemoPuckStallWatch()
@@ -15,19 +15,9 @@ export function DemoGameBridge() {
     setDemoActive(true)
     useGameStore.getState().resetMatch()
     resetPaddlesToSpawn()
-
-    let prevPhase = useGameStore.getState().phase
-
-    const unsubGame = useGameStore.subscribe((state) => {
-      if (prevPhase === 'goal' && state.phase === 'playing') {
-        resetPaddlesToSpawn()
-        triggerFaceoff(getLateralFaceoffSpawn())
-      }
-      prevPhase = state.phase
-    })
+    triggerFaceoff(getLateralFaceoffSpawn())
 
     return () => {
-      unsubGame()
       setDemoActive(false)
       useGameStore.getState().resetMatch()
       resetPaddlesToSpawn()

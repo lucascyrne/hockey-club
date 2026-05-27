@@ -15,6 +15,23 @@ export const SFX_CATALOG: Record<SfxId, SfxEntry> = {
   'hit-wall': { src: ['/audio/sfx/hit-wall.ogg', '/audio/sfx/hit-wall.mp3'], pool: 2 },
   goal: { src: ['/audio/sfx/goal.ogg', '/audio/sfx/goal.mp3'] },
   faceoff: { src: ['/audio/sfx/faceoff.ogg', '/audio/sfx/faceoff.mp3'] },
+  'countdown-tick': {
+    src: [
+      '/audio/sfx/countdown-tick.ogg',
+      '/audio/sfx/countdown-tick.mp3',
+      '/audio/sfx/faceoff.ogg',
+      '/audio/sfx/faceoff.mp3',
+    ],
+    pool: 3,
+  },
+  'countdown-puck': {
+    src: [
+      '/audio/sfx/countdown-puck.ogg',
+      '/audio/sfx/countdown-puck.mp3',
+      '/audio/sfx/faceoff.ogg',
+      '/audio/sfx/faceoff.mp3',
+    ],
+  },
   win: { src: ['/audio/sfx/win.ogg', '/audio/sfx/win.mp3'] },
 }
 

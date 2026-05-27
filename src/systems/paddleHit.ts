@@ -1,19 +1,18 @@
 import type { RapierRigidBody } from '@react-three/rapier'
-import { MAX_PUCK_SPEED, PUCK_RADIUS } from '../constants/physics'
-import { PADDLE_RADIUS, PADDLE_TRANSFER_FACTOR } from '../constants/paddle'
+import { MAX_PUCK_SPEED } from '../constants/physics'
+import { PADDLE_TRANSFER_FACTOR } from '../constants/paddle'
+import {
+  clampPlanarSpeed,
+  puckPaddleNormal,
+  PUCK_PADDLE_MIN_DIST,
+  resolvePuckPaddleOverlap,
+  type PlanarVelocity,
+} from './puckContact'
 
-export type PlanarVelocity = { x: number; z: number }
-
-function clampPlanarSpeed(x: number, z: number, max: number) {
-  const speed = Math.hypot(x, z)
-  if (speed <= max) return { x, z }
-  const s = max / speed
-  return { x: x * s, z: z * s }
-}
+export type { PlanarVelocity } from './puckContact'
 
 /**
- * Colisão elástica na normal de contato (referencial da raquete).
- * Evita o disco “grudar” quando a velocidade relativa ≈ 0 (caso comum com kinematic + atrito).
+ * Impulso de impacto (onCollisionEnter) + depenetração partilhada com o passo contínuo.
  */
 export function resolvePaddlePuckCollision(
   puckBody: RapierRigidBody,
@@ -22,19 +21,30 @@ export function resolvePaddlePuckCollision(
   paddleX: number,
   paddleZ: number,
   paddleVel: PlanarVelocity,
+  fallbackAwayX = 1,
+  hitStrength = 1,
 ) {
-  let nx = puckX - paddleX
-  let nz = puckZ - paddleZ
-  const dist = Math.hypot(nx, nz)
+  const strength = Math.max(0.2, Math.min(1.5, hitStrength))
+  const { nx, nz, dist } = puckPaddleNormal(
+    puckX,
+    puckZ,
+    paddleX,
+    paddleZ,
+    paddleVel,
+    fallbackAwayX,
+  )
 
-  if (dist < 1e-5) {
-    const ps = Math.hypot(paddleVel.x, paddleVel.z)
-    if (ps < 0.01) return
-    nx = paddleVel.x / ps
-    nz = paddleVel.z / ps
-  } else {
-    nx /= dist
-    nz /= dist
+  const overlap = PUCK_PADDLE_MIN_DIST - dist
+  if (overlap > 0) {
+    resolvePuckPaddleOverlap(
+      puckBody,
+      puckX,
+      puckZ,
+      paddleX,
+      paddleZ,
+      paddleVel,
+      fallbackAwayX,
+    )
   }
 
   const v = puckBody.linvel()
@@ -52,19 +62,24 @@ export function resolvePaddlePuckCollision(
     newVz = v.z + impulseN * nz
   }
 
-  const overlap = PUCK_RADIUS + PADDLE_RADIUS - dist
   const paddleSpeed = Math.hypot(paddleVel.x, paddleVel.z)
-  if (overlap > 0.002 && paddleSpeed > 0.15) {
-    const push = paddleSpeed * PADDLE_TRANSFER_FACTOR + 1.8
+  if (overlap > 0.002 && paddleSpeed > 0.08) {
+    const push = (paddleSpeed * PADDLE_TRANSFER_FACTOR + 1.8) * strength
     newVx = paddleVel.x + nx * push
     newVz = paddleVel.z + nz * push
   }
 
   const outNormal = (newVx - paddleVel.x) * nx + (newVz - paddleVel.z) * nz
-  if (outNormal < 1.5) {
-    const boost = 1.5 - outNormal
+  const minOut = 1.5 * strength
+  if (outNormal < minOut) {
+    const boost = minOut - outNormal
     newVx += nx * boost
     newVz += nz * boost
+  }
+
+  if (fallbackAwayX < 0 && strength < 0.8) {
+    const gentleMin = 0.55 + strength * 0.9
+    if (newVx < gentleMin) newVx = gentleMin
   }
 
   const { x, z } = clampPlanarSpeed(newVx, newVz, MAX_PUCK_SPEED)

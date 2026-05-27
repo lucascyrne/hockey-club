@@ -1,22 +1,21 @@
 import { useEffect } from 'react'
-import { useGameStore } from '../../stores/gameStore'
-import { triggerFaceoff } from '../../stores/puckActions'
-import { getLateralFaceoffSpawn } from '../../systems/puckSpawn'
-import { resetPaddlesToSpawn } from '../../systems/resetRound'
+import { beginRoundCountdown, cancelRoundCountdown } from '../../systems/roundCountdown'
+import { isMenuDemoActive } from '../../stores/menuDemoStore'
+import { isOnlineGuest, useSessionStore } from '../../stores/sessionStore'
 
-/** Liga regras (gol → pausa → saque lateral) sem re-renders no Canvas. */
+/** Inicia contagem + saque lateral ao entrar na partida. */
 export function GameBridge() {
-  useEffect(() => {
-    let prevPhase = useGameStore.getState().phase
+  const screen = useSessionStore((s) => s.screen)
 
-    return useGameStore.subscribe((state) => {
-      if (prevPhase === 'goal' && state.phase === 'playing') {
-        resetPaddlesToSpawn()
-        triggerFaceoff(getLateralFaceoffSpawn())
-      }
-      prevPhase = state.phase
-    })
-  }, [])
+  useEffect(() => {
+    if (screen !== 'match' || isMenuDemoActive() || isOnlineGuest()) return
+
+    const id = window.setTimeout(() => beginRoundCountdown(), 120)
+    return () => {
+      window.clearTimeout(id)
+      cancelRoundCountdown()
+    }
+  }, [screen])
 
   return null
 }

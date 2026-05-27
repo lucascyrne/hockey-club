@@ -6,6 +6,9 @@ import { LocaleSync } from '../components/i18n/LocaleSync'
 import { DevOnly } from '../components/dev/DevOnly'
 import { MatchShell } from '../components/ui/MatchShell'
 import { MainMenu } from '../components/ui/MainMenu'
+import { OnlineLobby } from '../components/ui/OnlineLobby'
+import { PwaUpdatePrompt } from '../components/ui/PwaUpdatePrompt'
+import { OnlineDisconnectOverlay } from '../components/ui/OnlineDisconnectOverlay'
 import { IS_DEV } from '../lib/env'
 import { useSessionStore } from '../stores/sessionStore'
 import '../styles/tokens.css'
@@ -22,7 +25,11 @@ export function App() {
       <DevOnly>
         <Leva collapsed hidden={!IS_DEV} />
       </DevOnly>
-      {screen === 'menu' ? <MainMenu /> : <MatchShell />}
+      <PwaUpdatePrompt />
+      {screen === 'menu' && <MainMenu />}
+      {screen === 'onlineLobby' && <OnlineLobby />}
+      {screen === 'match' && <MatchShell />}
+      <OnlineDisconnectOverlay />
     </div>
   )
 }

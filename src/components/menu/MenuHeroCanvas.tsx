@@ -1,5 +1,4 @@
 import { Canvas } from '@react-three/fiber'
-import { COLORS } from '../../constants/table'
 import { MenuHeroScene } from './MenuHeroScene'
 
 export function MenuHeroCanvas() {
@@ -15,7 +14,7 @@ export function MenuHeroCanvas() {
         }}
         style={{ pointerEvents: 'none' }}
       >
-        <color attach="background" args={[COLORS.background]} />
+        <color attach="background" args={['#030208']} />
         <MenuHeroScene />
       </Canvas>
     </div>

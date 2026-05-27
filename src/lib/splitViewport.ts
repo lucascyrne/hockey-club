@@ -9,8 +9,13 @@ export type ViewportRect = {
   h: number
 }
 
-/** Portrait → horizontal (frente a frente); landscape → lateral (desktop). */
-export function resolveSplitAxis(width: number, height: number): SplitAxis {
+/** Touch → horizontal (tablet/mobile); portrait → horizontal; landscape fino → lateral. */
+export function resolveSplitAxis(
+  width: number,
+  height: number,
+  coarsePointer = false,
+): SplitAxis {
+  if (coarsePointer) return 'horizontal'
   return height > width ? 'horizontal' : 'lateral'
 }
 

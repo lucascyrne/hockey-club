@@ -12,7 +12,7 @@ export function MenuHeroSceneContent() {
   return (
     <>
       <SceneLighting variant="hero" />
-      <ArenaBackdrop reactive={false} />
+      <ArenaBackdrop reactive={false} dimmed />
       <Table />
       <PhysicsWorld>
         <DemoGameBridge />

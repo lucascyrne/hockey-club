@@ -2,11 +2,13 @@
 
 ## Modos × layout
 
-| Modo | Portrait (altura > largura) | Landscape |
-|------|----------------------------|-----------|
-| vs CPU | Tela cheia, toque em toda a mesa | Idem |
-| 2P local | Split **horizontal** (P1 embaixo, P2 em cima) | Split **lateral** (P1 esq., P2 dir.) |
-| Online | Stub | — |
+| Modo | Portrait (altura > largura) | Landscape touch (tablet) | Landscape desktop (ponteiro fino) |
+|------|----------------------------|--------------------------|-----------------------------------|
+| vs CPU | Tela cheia, toque em toda a mesa | Idem | Idem |
+| 2P local | Split **horizontal** (P1 embaixo, P2 em cima) | Split **horizontal** (igual mobile) | Split **lateral** (P1 esq., P2 dir.) |
+| Online | Stub | — | — |
+
+O eixo 2P usa `(pointer: coarse)` em [`resolveSplitAxis`](../src/lib/splitViewport.ts): tablets em landscape mantêm split horizontal e placar central, não o layout lateral do desktop.
 
 ## Câmera mobile
 
@@ -26,7 +28,7 @@ No **2P**, P1 e P2 usam a mesma lógica espelhada (`buildGoalCameraConfig` com `
 | Elemento | Comportamento |
 |----------|---------------|
 | **Menu ☰** | [`GameHudDrawer`](../src/components/ui/GameHudDrawer.tsx) — painel lateral direito com padding à direita; idioma, dúvidas, voltar ao menu |
-| **Placar** | [`Scoreboard`](../src/components/ui/Scoreboard.tsx): `top` horizontal (vs CPU); `split` = **dois** placares lado a lado no centro (P2 invertido, P1 normal); `center` reservado para online |
+| **Placar** | [`Scoreboard`](../src/components/ui/Scoreboard.tsx): `top` (vs CPU); `split` = duas faces no centro da divisão (2P horizontal/tablet, P2 invertido); `dualTop` = placar completo no topo de **cada metade** (2P lateral desktop); `center` reservado para online |
 | **Pulso impacto** | `arenaFxStore` → chão/paredes [`ArenaBackdrop`](../src/components/canvas/ArenaBackdrop.tsx), bordas [`Table`](../src/components/table/Table.tsx), vignette CSS `--arena-pulse` no HUD |
 
 Z-index: drawer > placar > linha de divisão > canvas. Placar com `pointer-events: none`.
@@ -54,7 +56,8 @@ Z-index: drawer > placar > linha de divisão > canvas. Placar com `pointer-event
 - [ ] iOS Safari — 2P portrait: split horizontal, dois dedos, ambas metades com mesa visível
 - [ ] iOS Safari — 2P: placar no centro da divisão legível em cada metade
 - [ ] Chrome Android — idem
-- [ ] Desktop — 2P landscape: split lateral (regressão)
+- [ ] iPad / tablet landscape — 2P: split horizontal (não lateral)
+- [ ] Desktop — 2P landscape: split lateral; dois placares no topo de cada metade (`dualTop`)
 - [ ] HUD — um botão ☰, sem ícones sobrepostos no topo
 - [ ] iframe em horizonte.dev.br — touch OK
 - [ ] Menu em telefone: sem hero 3D pesado (`reduceMenuFx`)

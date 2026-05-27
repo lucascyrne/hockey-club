@@ -1,11 +1,10 @@
 import { useGameStore } from '../stores/gameStore'
-import { triggerFaceoff } from '../stores/puckActions'
-import { getLateralFaceoffSpawn } from './puckSpawn'
+import { beginRoundCountdown } from './roundCountdown'
 import { resetPaddlesToSpawn } from './resetRound'
 
-/** Reinicia a partida atual (placar, raquetes, saque lateral). */
+/** Reinicia a partida atual (placar, raquetes, contagem + saque lateral). */
 export function restartCurrentMatch() {
   useGameStore.getState().resetMatch()
   resetPaddlesToSpawn()
-  triggerFaceoff(getLateralFaceoffSpawn())
+  beginRoundCountdown()
 }

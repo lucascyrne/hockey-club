@@ -3,6 +3,8 @@ export type SfxId =
   | 'hit-wall'
   | 'goal'
   | 'faceoff'
+  | 'countdown-tick'
+  | 'countdown-puck'
   | 'win'
 
 export type BgmTrack = 'menu' | 'match'

@@ -28,6 +28,18 @@ export function playFaceoffSfx() {
   playSfx('faceoff')
 }
 
+const TICK_RATE: Record<1 | 2 | 3, number> = { 1: 0.82, 2: 1, 3: 1.18 }
+
+export function playCountdownTickSfx(step: 1 | 2 | 3) {
+  if (!canPlayGameAudio()) return
+  playSfx('countdown-tick', { rate: TICK_RATE[step], volume: 0.95 })
+}
+
+export function playCountdownPuckSfx() {
+  if (!canPlayGameAudio()) return
+  playSfx('countdown-puck', { volume: 1, rate: 1.05 })
+}
+
 export function playSfxIfAllowed(id: SfxId, options?: Parameters<typeof playSfx>[1]) {
   if (!canPlayGameAudio()) return
   playSfx(id, options)

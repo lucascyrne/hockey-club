@@ -26,6 +26,8 @@
 | P1 | Mesmos primitivos + colliders Rapier | Física antes de arte |
 | P2+ | GLB opcional: `table.glb`, `paddle.glb`, `puck.glb` | Substituir visual sem mudar colliders |
 
+Detalhes de mesa realista, rastro neon e gol contínuo: [09-visual-polish-deferred.md](./09-visual-polish-deferred.md).
+
 ## Limites de performance (MVP)
 
 | Asset | Triângulos máx. | Texturas |

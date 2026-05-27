@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { LOCALES, useTranslation } from '../../i18n'
 import type { Locale } from '../../i18n'
 import { useSessionStore } from '../../stores/sessionStore'
@@ -17,33 +16,30 @@ function localeLabel(t: ReturnType<typeof useTranslation>['t'], locale: Locale) 
 export function GameHudDrawer({ hint, showHint, onToggleHint }: GameHudDrawerProps) {
   const { t, locale, setLocale } = useTranslation()
   const exitMatch = useSessionStore((s) => s.exitMatch)
+  const exitOnline = useSessionStore((s) => s.exitOnline)
+  const matchMode = useSessionStore((s) => s.matchMode)
+  const settingsOpen = useSessionStore((s) => s.settingsOpen)
   const open = useSessionStore((s) => s.hudDrawerOpen)
   const setHudDrawerOpen = useSessionStore((s) => s.setHudDrawerOpen)
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setHudDrawerOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, setHudDrawerOpen])
+  const setSettingsOpen = useSessionStore((s) => s.setSettingsOpen)
 
   return (
     <>
-      <button
-        type="button"
-        className="game-hud-drawer__toggle"
-        aria-label={t.hud.openMenu}
-        aria-expanded={open}
-        onClick={() => setHudDrawerOpen(!open)}
-      >
-        <span className="game-hud-drawer__toggle-icon" aria-hidden>
-          ☰
-        </span>
-      </button>
+      {!settingsOpen && (
+        <button
+          type="button"
+          className="game-hud-drawer__toggle"
+          aria-label={t.hud.openMenu}
+          aria-expanded={open}
+          onClick={() => setHudDrawerOpen(!open)}
+        >
+          <span className="game-hud-drawer__toggle-icon" aria-hidden>
+            ☰
+          </span>
+        </button>
+      )}
 
-      {open && (
+      {open && !settingsOpen && (
         <div className="game-hud-drawer__backdrop" onClick={() => setHudDrawerOpen(false)}>
           <aside
             className="game-hud-drawer__panel"
@@ -93,13 +89,29 @@ export function GameHudDrawer({ hint, showHint, onToggleHint }: GameHudDrawerPro
               {showHint && <p className="game-hud-drawer__hint">{hint}</p>}
             </section>
 
+            {matchMode !== 'online' && (
+              <section className="game-hud-drawer__section">
+                <button
+                  type="button"
+                  className="game-hud-drawer__action"
+                  onClick={() => {
+                    setHudDrawerOpen(false)
+                    setSettingsOpen(true)
+                  }}
+                >
+                  {t.hud.settings}
+                </button>
+              </section>
+            )}
+
             <section className="game-hud-drawer__section">
               <button
                 type="button"
                 className="game-hud-drawer__action game-hud-drawer__action--danger"
                 onClick={() => {
                   setHudDrawerOpen(false)
-                  exitMatch()
+                  if (matchMode === 'online') exitOnline()
+                  else exitMatch()
                 }}
               >
                 {t.hud.menu}

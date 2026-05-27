@@ -1,15 +1,13 @@
 import { useEffect, useRef } from 'react'
-import {
-  CPU_ERROR_HALF,
-  CPU_ERROR_REFRESH_MS,
-  CPU_REACTION_MS,
-} from '../constants/cpu'
+import { getCpuProfile } from '../lib/cpuDifficulty'
 import { getPuckSample } from '../lib/puckTracker'
 import { isMenuDemoActive } from '../stores/menuDemoStore'
 import { useGameStore } from '../stores/gameStore'
 import { paddleTargets } from '../stores/paddleTargets'
 import type { PlayerId } from '../systems/bounds'
 import { computeCpuIdealTarget, stepCpuPaddleTarget } from '../systems/cpuPaddle'
+
+const DEMO_PROFILE = getCpuProfile(3)
 
 type CpuErrorState = { x: number; z: number }
 type CpuTimingState = {
@@ -34,20 +32,20 @@ function tickCpuPlayer(
   now: number,
   delta: number,
 ) {
-  if (now - state.lastPuckSampleAt >= CPU_REACTION_MS) {
+  if (now - state.lastPuckSampleAt >= DEMO_PROFILE.reactionMs) {
     state.delayedPuck = getPuckSample()
     state.lastPuckSampleAt = now
   }
 
-  if (now - state.lastErrorAt >= CPU_ERROR_REFRESH_MS) {
+  if (now - state.lastErrorAt >= DEMO_PROFILE.errorRefreshMs) {
     state.error = {
-      x: (Math.random() - 0.5) * 2 * CPU_ERROR_HALF,
-      z: (Math.random() - 0.5) * 2 * CPU_ERROR_HALF,
+      x: (Math.random() - 0.5) * 2 * DEMO_PROFILE.errorHalf,
+      z: (Math.random() - 0.5) * 2 * DEMO_PROFILE.errorHalf,
     }
     state.lastErrorAt = now
   }
 
-  const ideal = computeCpuIdealTarget(playerId, state.delayedPuck)
+  const ideal = computeCpuIdealTarget(playerId, state.delayedPuck, DEMO_PROFILE)
   const target = playerId === 1 ? paddleTargets.p1 : paddleTargets.p2
   stepCpuPaddleTarget(
     playerId,
@@ -57,6 +55,7 @@ function tickCpuPlayer(
       z: ideal.z + state.error.z,
     },
     delta,
+    DEMO_PROFILE,
   )
 }
 
@@ -73,7 +72,7 @@ export function useDemoDualCpu() {
 
       if (
         isMenuDemoActive() &&
-        useGameStore.getState().phase === 'playing'
+        useGameStore.getState().phase !== 'gameOver'
       ) {
         tickCpuPlayer(1, p1.current, now, delta)
         tickCpuPlayer(2, p2.current, now, delta)

@@ -2,16 +2,25 @@ import { Physics } from '@react-three/rapier'
 import type { ReactNode } from 'react'
 import { GRAVITY, PHYSICS_TIMESTEP } from '../../constants/physics'
 import { IS_DEV } from '../../lib/env'
+import { useGameStore } from '../../stores/gameStore'
+import { useSessionStore } from '../../stores/sessionStore'
 
 type PhysicsWorldProps = {
   children: ReactNode
 }
 
 export function PhysicsWorld({ children }: PhysicsWorldProps) {
+  const paused = useSessionStore((s) => {
+    if (s.screen !== 'match' || s.matchMode === 'online') return false
+    if (s.hudDrawerOpen || s.settingsOpen) return true
+    return useGameStore.getState().phase === 'countdown'
+  })
+
   return (
     <Physics
       gravity={GRAVITY}
       timeStep={PHYSICS_TIMESTEP}
+      paused={paused}
       updatePriority={-50}
       interpolate
       maxCcdSubsteps={8}

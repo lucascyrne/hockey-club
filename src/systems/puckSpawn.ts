@@ -18,6 +18,23 @@ export type PuckSpawnState = {
  * Saque do centro da linha lateral (Z): disco no meio em X,
  * impulso para dentro da mesa com leve viés aleatório para um dos lados/campos.
  */
+/** Relançamento pelo centro após gol (impulso radial no plano XZ). */
+export function getCenterEjectSpawn(): PuckSpawnState {
+  const angle = Math.random() * Math.PI * 2
+  const speed =
+    FACEOFF_SPEED_MIN +
+    Math.random() * (FACEOFF_SPEED_MAX - FACEOFF_SPEED_MIN)
+
+  return {
+    x: 0,
+    y: PUCK_REST_Y,
+    z: 0,
+    vx: Math.cos(angle) * speed,
+    vy: 0,
+    vz: Math.sin(angle) * speed,
+  }
+}
+
 export function getLateralFaceoffSpawn(): PuckSpawnState {
   const side = Math.random() < 0.5 ? -1 : 1
   const z = side * TABLE_PLAY_HALF_Z * 0.92

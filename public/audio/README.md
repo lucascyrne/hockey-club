@@ -10,6 +10,8 @@ Coloque os ficheiros de som nesta pasta. O motor tenta `.ogg` primeiro e `.mp3` 
 | `hit-wall.ogg` | (reservado) rebate na lateral |
 | `goal.ogg` | Gol marcado |
 | `faceoff.ogg` | Saque lateral |
+| `countdown-tick.ogg` | Contagem 1 · 2 · 3 (fallback: `faceoff`) |
+| `countdown-puck.ogg` | “DISCO” antes do saque (fallback: `faceoff`) |
 | `win.ogg` | Vitória (7 pontos) |
 
 Sons curtos (< 1 s), formato OGG Vorbis ou MP3.

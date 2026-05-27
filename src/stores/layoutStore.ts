@@ -20,7 +20,7 @@ function readLayout(): Pick<
   const isCoarsePointer =
     typeof window !== 'undefined' &&
     window.matchMedia('(pointer: coarse)').matches
-  const splitAxis = resolveSplitAxis(width, height)
+  const splitAxis = resolveSplitAxis(width, height, isCoarsePointer)
   const isMobile = isCoarsePointer || width < 768
   const reduceMenuFx = isCoarsePointer || height > width
 

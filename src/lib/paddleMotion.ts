@@ -1,4 +1,5 @@
-import { MAX_PADDLE_SPEED, PADDLE_RESPONSE } from '../constants/paddle'
+import { PADDLE_RESPONSE } from '../constants/paddle'
+import { getPaddleMaxSpeed, getPaddleSpeedLevel } from './paddleFeel'
 import { clampPaddlePosition, type PlayerId } from '../systems/bounds'
 
 export type PlanarMotion = {
@@ -28,7 +29,7 @@ export function stepPaddleMotion(
   let moveX = dx * blend
   let moveZ = dz * blend
 
-  const maxMove = MAX_PADDLE_SPEED * delta
+  const maxMove = getPaddleMaxSpeed(getPaddleSpeedLevel(playerId)) * delta
   const moveLen = Math.hypot(moveX, moveZ)
   if (moveLen > maxMove) {
     const s = maxMove / moveLen

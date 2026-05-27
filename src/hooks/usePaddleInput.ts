@@ -1,7 +1,7 @@
 import { useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { PADDLE_INPUT_SPEED } from '../constants/paddle'
+import { getPaddleInputSpeed, getPaddleSpeedLevel } from '../lib/paddleFeel'
 import { TABLE_SURFACE_TOP } from '../constants/physics'
 import { IS_DEV } from '../lib/env'
 import { getGoalCamera } from '../lib/cameraRegistry'
@@ -12,9 +12,14 @@ import {
 } from '../lib/pointerSession'
 import { getSplitAxis } from '../stores/layoutStore'
 import { cameraMode } from '../stores/cameraMode'
-import { isLocal2pMode, isVsCpuMode } from '../stores/sessionStore'
+import {
+  isLocal2pMode,
+  isLocalMatchPaused,
+  isOnlineMode,
+  isVsCpuMode,
+  useSessionStore,
+} from '../stores/sessionStore'
 import { useGameStore } from '../stores/gameStore'
-import { useSessionStore } from '../stores/sessionStore'
 import { clampPaddlePosition, type PlayerId } from '../systems/bounds'
 import { paddleTargets } from '../stores/paddleTargets'
 
@@ -34,10 +39,9 @@ function isP1KeyboardActive() {
 }
 
 function canProcessInput() {
-  return (
-    useSessionStore.getState().screen === 'match' &&
-    useGameStore.getState().phase === 'playing'
-  )
+  if (isLocalMatchPaused()) return false
+  const phase = useGameStore.getState().phase
+  return useSessionStore.getState().screen === 'match' && phase === 'playing'
 }
 
 function nudgeTarget(playerId: PlayerId, dx: number, dz: number, delta: number) {
@@ -45,7 +49,7 @@ function nudgeTarget(playerId: PlayerId, dx: number, dz: number, delta: number) 
   const len = Math.hypot(dx, dz)
   if (len < 1e-6) return
 
-  const step = PADDLE_INPUT_SPEED * delta
+  const step = getPaddleInputSpeed(getPaddleSpeedLevel(playerId)) * delta
   target.x += (dx / len) * step
   target.z += (dz / len) * step
 
@@ -55,12 +59,17 @@ function nudgeTarget(playerId: PlayerId, dx: number, dz: number, delta: number) 
 }
 
 function applyKeyboard(delta: number) {
-  if (keys.w) nudgeTarget(1, -1, 0, delta)
-  if (keys.s) nudgeTarget(1, 1, 0, delta)
-  if (keys.a) nudgeTarget(1, 0, 1, delta)
-  if (keys.d) nudgeTarget(1, 0, -1, delta)
+  const online = isOnlineMode()
+  const localId = online ? useSessionStore.getState().localPlayerId : 1
 
-  if (isLocal2pMode()) {
+  if (!online || localId === 1) {
+    if (keys.w) nudgeTarget(1, -1, 0, delta)
+    if (keys.s) nudgeTarget(1, 1, 0, delta)
+    if (keys.a) nudgeTarget(1, 0, 1, delta)
+    if (keys.d) nudgeTarget(1, 0, -1, delta)
+  }
+
+  if (isLocal2pMode() || (online && localId === 2)) {
     if (keys.up) nudgeTarget(2, 1, 0, delta)
     if (keys.down) nudgeTarget(2, -1, 0, delta)
     if (keys.left) nudgeTarget(2, 0, -1, delta)
@@ -97,7 +106,9 @@ export function usePaddleInput() {
     const local2p = isLocal2pMode()
     const axis = getSplitAxis()
 
-    let playerId: PlayerId = 1
+    let playerId: PlayerId = isOnlineMode()
+      ? useSessionStore.getState().localPlayerId
+      : 1
     if (local2p) {
       const bound = pointerSession.current.get(e.pointerId)
       playerId =
@@ -164,7 +175,8 @@ export function usePaddleInput() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (!GAME_KEYS.has(e.code)) return
-      if (e.code.startsWith('Arrow') && isVsCpuMode()) return
+      if (e.code.startsWith('Arrow') && isVsCpuMode() && !isOnlineMode()) return
+      if (e.code.startsWith('Arrow') && isOnlineMode() && useSessionStore.getState().localPlayerId !== 2) return
       if (e.code.startsWith('Arrow')) e.preventDefault()
       setKey(e.code, true)
     }

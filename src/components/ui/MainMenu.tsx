@@ -12,6 +12,7 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { LanguageSwitcher } from './LanguageSwitcher'
 
 import { SettingsModal } from './SettingsModal'
+import { PwaInstallPrompt } from './PwaInstallPrompt'
 
 import '../../styles/menu.css'
 
@@ -28,12 +29,14 @@ export function MainMenu() {
 
 
 
+  const enterOnlineLobby = useSessionStore((s) => s.enterOnlineLobby)
+
   const onSelect = (mode: MatchMode) => {
-
-    if (mode === 'online') return
-
+    if (mode === 'online') {
+      enterOnlineLobby()
+      return
+    }
     startMatch(mode)
-
   }
 
 
@@ -105,9 +108,11 @@ export function MainMenu() {
 
 
 
-          <button type="button" className="mode-card" disabled>
+          <button type="button" className="mode-card" onClick={() => onSelect('online')}>
 
-            <span className="mode-card__badge">{t.menu.online.badge}</span>
+            {t.menu.online.badge ? (
+              <span className="mode-card__badge">{t.menu.online.badge}</span>
+            ) : null}
 
             <span className="mode-card__label">{t.menu.online.label}</span>
 
@@ -134,6 +139,8 @@ export function MainMenu() {
           </button>
 
         </nav>
+
+        <PwaInstallPrompt />
 
       </div>
 
