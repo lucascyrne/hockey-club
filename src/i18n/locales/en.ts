@@ -88,6 +88,9 @@ export const en: Translations = {
     later: 'Later',
     install: 'Install app',
     installHint: 'Add to home screen for quick access',
+    iosHint: 'On Safari: Share → Add to Home Screen.',
+    embedHint: 'To install, open the game in a new tab (not inside an iframe).',
+    devHint: 'PWA in dev: run npm run build && npm run preview.',
   },
   online: {
     title: 'Online 1v1',

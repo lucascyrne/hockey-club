@@ -88,6 +88,9 @@ export const es: Translations = {
     later: 'Después',
     install: 'Instalar app',
     installHint: 'Acceso rápido desde la pantalla de inicio',
+    iosHint: 'En Safari: compartir → «Añadir a pantalla de inicio».',
+    embedHint: 'Para instalar, abre el juego en una pestaña nueva (no en iframe).',
+    devHint: 'PWA en dev: ejecuta npm run build && npm run preview.',
   },
   online: {
     title: 'En línea 1v1',

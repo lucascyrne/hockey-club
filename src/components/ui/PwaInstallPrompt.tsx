@@ -1,55 +1,48 @@
-import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '../../i18n'
+import { usePwaInstall } from '../../hooks/usePwaInstall'
 import '../../styles/pwa-prompt.css'
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
 
 export function PwaInstallPrompt() {
   const { t } = useTranslation()
-  const deferredRef = useRef<BeforeInstallPromptEvent | null>(null)
-  const [canInstall, setCanInstall] = useState(false)
+  const { canPrompt, showIosHint, showEmbedHint, showDevHint, promptInstall } =
+    usePwaInstall()
 
-  useEffect(() => {
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault()
-      deferredRef.current = e as BeforeInstallPromptEvent
-      setCanInstall(true)
-    }
+  if (!canPrompt && !showIosHint && !showEmbedHint && !showDevHint) return null
 
-    const onInstalled = () => {
-      deferredRef.current = null
-      setCanInstall(false)
-    }
+  if (canPrompt) {
+    return (
+      <div className="pwa-install pwa-install--floating" role="region" aria-label={t.pwa.install}>
+        <button
+          type="button"
+          className="pwa-install__btn"
+          onClick={() => void promptInstall()}
+        >
+          {t.pwa.install}
+        </button>
+        <span className="pwa-install__hint">{t.pwa.installHint}</span>
+      </div>
+    )
+  }
 
-    window.addEventListener('beforeinstallprompt', onBeforeInstall)
-    window.addEventListener('appinstalled', onInstalled)
+  if (showIosHint) {
+    return (
+      <div className="pwa-install pwa-install--floating pwa-install--hint-only" role="note">
+        <p className="pwa-install__ios">{t.pwa.iosHint}</p>
+      </div>
+    )
+  }
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-      window.removeEventListener('appinstalled', onInstalled)
-    }
-  }, [])
-
-  if (!canInstall) return null
-
-  const onInstall = async () => {
-    const prompt = deferredRef.current
-    if (!prompt) return
-    await prompt.prompt()
-    await prompt.userChoice
-    deferredRef.current = null
-    setCanInstall(false)
+  if (showEmbedHint) {
+    return (
+      <div className="pwa-install pwa-install--floating pwa-install--hint-only" role="note">
+        <p className="pwa-install__ios">{t.pwa.embedHint}</p>
+      </div>
+    )
   }
 
   return (
-    <div className="pwa-install" role="region" aria-label={t.pwa.install}>
-      <button type="button" className="pwa-install__btn" onClick={() => void onInstall()}>
-        {t.pwa.install}
-      </button>
-      <span className="pwa-install__hint">{t.pwa.installHint}</span>
+    <div className="pwa-install pwa-install--floating pwa-install--hint-only" role="note">
+      <p className="pwa-install__dev">{t.pwa.devHint}</p>
     </div>
   )
 }

@@ -85,6 +85,9 @@ export type Translations = {
     later: string
     install: string
     installHint: string
+    iosHint: string
+    embedHint: string
+    devHint: string
   }
   online: {
     title: string

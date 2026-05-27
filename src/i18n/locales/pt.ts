@@ -88,6 +88,9 @@ export const pt: Translations = {
     later: 'Depois',
     install: 'Instalar app',
     installHint: 'Jogue offline com atalho no ecrã',
+    iosHint: 'No Safari: partilhar → «Adicionar ao ecrã inicial».',
+    embedHint: 'Para instalar, abra o jogo num separador (não em iframe).',
+    devHint: 'PWA em dev: use npm run build && npm run preview (HTTPS/localhost).',
   },
   online: {
     title: 'Online 1v1',

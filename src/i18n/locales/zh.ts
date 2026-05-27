@@ -88,6 +88,9 @@ export const zh: Translations = {
     later: '稍后',
     install: '安装应用',
     installHint: '添加到主屏幕以便快速访问',
+    iosHint: '在 Safari 中：分享 →「添加到主屏幕」。',
+    embedHint: '要安装，请在新标签页中打开游戏（不要在 iframe 内）。',
+    devHint: '开发模式请运行 npm run build && npm run preview。',
   },
   online: {
     title: '在线 1v1',

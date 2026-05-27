@@ -12,8 +12,6 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { LanguageSwitcher } from './LanguageSwitcher'
 
 import { SettingsModal } from './SettingsModal'
-import { PwaInstallPrompt } from './PwaInstallPrompt'
-
 import '../../styles/menu.css'
 
 
@@ -139,8 +137,6 @@ export function MainMenu() {
           </button>
 
         </nav>
-
-        <PwaInstallPrompt />
 
       </div>
 
