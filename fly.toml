@@ -1,0 +1,21 @@
+# fly.toml app configuration file generated for hockey-club on 2026-05-27T05:42:23Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'hockey-club'
+primary_region = 'gru'
+
+[http_service]
+  auto_start_machines = true
+  auto_stop_machines = 'stop'
+  force_https = true
+  internal_port = 8787
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory = '1gb'
+  memory_mb = 256
