@@ -31,7 +31,8 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
   .filter(Boolean)
 
 const rateWindow = new Map<WebSocket, { count: number; resetAt: number }>()
-const MAX_MSG_PER_SEC = 40
+/** Host + guest enviam ~50 msg/s em TICK_MS=20; margem para ping/ready. */
+const MAX_MSG_PER_SEC = 60
 
 function isOriginAllowed(origin: string | undefined): boolean {
   if (!origin) return true
@@ -198,7 +199,7 @@ wss.on('connection', (ws, req) => {
     return
   }
 
-  ws.on('message', (data) => handleMessage(ws, data))
+  ws.on('message', (data: Buffer | string) => handleMessage(ws, data))
   ws.on('close', () => {
     rateWindow.delete(ws)
     const room = getRoomForSocket(ws)

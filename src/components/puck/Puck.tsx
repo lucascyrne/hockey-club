@@ -2,6 +2,7 @@ import {
   CylinderCollider,
   RigidBody,
   useAfterPhysicsStep,
+  useBeforePhysicsStep,
   type CollisionEnterPayload,
   type RapierRigidBody,
 } from '@react-three/rapier'
@@ -48,7 +49,11 @@ import { detectGoal } from '../../systems/rules'
 import { getCpuProfile } from '../../lib/cpuDifficulty'
 import { getMaxPuckSpeed, getPuckLinearDamping } from '../../lib/puckFeel'
 import { useSettingsStore } from '../../stores/settingsStore'
-import { isOnlineGuest, isOnlineHost } from '../../stores/sessionStore'
+import {
+  isOnlineGuest,
+  isOnlineHost,
+  useSessionStore,
+} from '../../stores/sessionStore'
 import { broadcastGoal } from '../../hooks/useOnlineSync'
 import {
   onlineGuestPuck,
@@ -252,15 +257,46 @@ export function Puck() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  useBeforePhysicsStep(() => {
+    if (!isOnlineGuest()) return
+    const body = bodyRef.current
+    if (!body) return
+    const s = onlineGuestPuck.current
+    const y = body.translation().y
+    body.setTranslation({ x: s.x, y, z: s.z }, true)
+    body.setLinvel({ x: s.vx, y: 0, z: s.vz }, true)
+  })
+
   useAfterPhysicsStep(() => {
     const body = bodyRef.current
     if (!body) return
 
     if (isOnlineGuest()) {
+      const phase = useGameStore.getState().phase
+      const flow = usePuckFlowStore.getState().flow
       const s = onlineGuestPuck.current
-      const y = body.translation().y
-      body.setTranslation({ x: s.x, y, z: s.z }, true)
-      body.setLinvel({ x: s.vx, y: 0, z: s.vz }, true)
+
+      if (phase === 'playing' && flow === 'play') {
+        const localId = useSessionStore.getState().localPlayerId
+        const paddle =
+          localId === 1 ? paddleMotionState.p1 : paddleMotionState.p2
+        resolvePuckPaddleOverlaps(body, s.x, s.z, [
+          {
+            x: paddle.x,
+            z: paddle.z,
+            vel: getPaddleVelocity(localId),
+            awayX: localId === 1 ? 1 : -1,
+            clearTowardEnemyX: localId === 1 ? -1 : 1,
+          },
+        ])
+        const pos = body.translation()
+        const v = body.linvel()
+        s.x = pos.x
+        s.z = pos.z
+        s.vx = v.x
+        s.vz = v.z
+      }
+
       setPuckSample(s)
       return
     }

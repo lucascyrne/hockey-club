@@ -54,7 +54,8 @@ export function normalizeCode(raw: string): string | null {
   if ([...code].some((c) => !CODE_CHARS.includes(c))) return null
   return code
 }
-export const TICK_MS = 33
+/** Taxa de input/estado (~50 Hz). Servidor permite até 60 msg/s por socket. */
+export const TICK_MS = 20
 export const MAX_MSG_BYTES = 4096
 
 export function parseC2S(raw: string): C2S | null {
