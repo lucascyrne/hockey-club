@@ -34,7 +34,6 @@ import {
   triggerFaceoff,
   unregisterPuckActions,
 } from '../../stores/puckActions'
-import { paddleMotionState } from '../../stores/paddleMotionState'
 import { getCpuStrikeStrength } from '../../ai/actuation/strikeProfile'
 import { resolvePaddlePuckCollision } from '../../systems/paddleHit'
 import { enforcePuckTableBounds } from '../../systems/puckBounds'
@@ -55,7 +54,6 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import {
   isOnlineGuest,
   isOnlineHost,
-  useSessionStore,
 } from '../../stores/sessionStore'
 import { broadcastGoal } from '../../hooks/useOnlineSync'
 import {

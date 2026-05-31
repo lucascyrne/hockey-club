@@ -1,7 +1,6 @@
 import { GOAL_HALF_WIDTH } from '../../constants/game'
 import type { PuckSample } from '../../lib/puckTracker'
 import { GOAL_LINE_X_NEG, GOAL_LINE_X_POS } from '../../systems/rules'
-import type { Vec2 } from '../types'
 import type { PuckPathPoint } from './puckPath'
 
 export type GoalEntry = {

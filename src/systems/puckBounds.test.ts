@@ -20,7 +20,7 @@ function diagonalClampPosition(x: number, z: number): { x: number; z: number } {
   const { x: px, z: pz, nx, nz } = projectToCornerDiagonal(x, z, sx, sz)
   let newX = px + nx * 0.012
   let newZ = pz + nz * 0.012
-  const maxSum = cornerDiagonalMaxSum(sx, sz) - 0.012
+  const maxSum = cornerDiagonalMaxSum() - 0.012
   const sum = sx * newX + sz * newZ
   if (sum > maxSum) {
     const excess = sum - maxSum
