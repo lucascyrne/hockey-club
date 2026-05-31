@@ -3,7 +3,6 @@ import { DemoPaddles } from '../paddle/DemoPaddles'
 import { Puck } from '../puck/Puck'
 import { Table } from '../table/Table'
 import { TablePhysics } from '../table/TablePhysics'
-import { ArenaBackdrop } from '../canvas/ArenaBackdrop'
 import { PhysicsWorld } from '../canvas/PhysicsWorld'
 import { SceneLighting } from '../canvas/SceneLighting'
 
@@ -12,7 +11,6 @@ export function MenuHeroSceneContent() {
   return (
     <>
       <SceneLighting variant="hero" />
-      <ArenaBackdrop reactive={false} dimmed />
       <Table />
       <PhysicsWorld>
         <DemoGameBridge />

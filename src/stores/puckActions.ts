@@ -4,6 +4,7 @@ import type { PuckSpawnState } from '../systems/puckSpawn'
 type PuckActions = {
   faceoff: (spawn: PuckSpawnState) => void
   freeze: () => void
+  nudge: (vx: number, vz: number) => void
 }
 
 let actions: PuckActions | null = null
@@ -27,4 +28,8 @@ export function triggerFaceoff(spawn: PuckSpawnState) {
 
 export function freezePuck() {
   actions?.freeze()
+}
+
+export function nudgePuck(vx: number, vz: number) {
+  actions?.nudge(vx, vz)
 }

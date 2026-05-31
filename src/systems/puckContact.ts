@@ -12,12 +12,65 @@ export const PUCK_PADDLE_MIN_DIST = PUCK_RADIUS + PADDLE_RADIUS + 0.005
 
 const MIN_SEPARATION_SPEED = 1.2
 const PADDLE_REST_SPEED = 0.01
+const DEEP_OVERLAP_RATIO = 0.98
+
+/** Posição no hemisfério de ataque (lado adversário em X). */
+export function placePuckOnStrikeSide(
+  paddleX: number,
+  paddleZ: number,
+  puckZ: number,
+  clearTowardEnemyX: number,
+): { x: number; z: number } {
+  const sx = Math.sign(clearTowardEnemyX) || 1
+  const sepX = paddleX + sx * PUCK_PADDLE_MIN_DIST
+  const dz = puckZ - paddleZ
+  const maxZ = Math.sqrt(Math.max(0, PUCK_PADDLE_MIN_DIST * PUCK_PADDLE_MIN_DIST - 1e-8))
+  const sepZ =
+    Math.abs(dz) <= maxZ ? puckZ : paddleZ + Math.sign(dz || 1) * maxZ * 0.85
+  return { x: sepX, z: sepZ }
+}
+
+function enforceClearVelocityX(
+  vx: number,
+  clearTowardEnemyX: number,
+  minOut: number,
+): number {
+  const sx = Math.sign(clearTowardEnemyX) || 1
+  if (sx > 0 && vx < minOut) return minOut
+  if (sx < 0 && vx > -minOut) return -minOut
+  return vx
+}
 
 export function clampPlanarSpeed(x: number, z: number, max: number) {
   const speed = Math.hypot(x, z)
   if (speed <= max) return { x, z }
   const s = max / speed
   return { x: x * s, z: z * s }
+}
+
+/** Disco do lado do nosso gol em relação à raquete (tunnel / “por baixo”). */
+export function isPuckBehindPaddlePlanar(
+  puckX: number,
+  paddleX: number,
+  clearTowardEnemyX: number,
+): boolean {
+  return clearTowardEnemyX > 0
+    ? puckX < paddleX - 0.001
+    : puckX > paddleX + 0.001
+}
+
+function separationNormalTowardEnemy(
+  puckZ: number,
+  paddleZ: number,
+  clearTowardEnemyX: number,
+): { nx: number; nz: number } {
+  let nx = Math.sign(clearTowardEnemyX) || 1
+  let nz = puckZ - paddleZ
+  if (Math.hypot(nz) < 0.008) {
+    nz = Math.abs(puckZ) > 0.02 ? -Math.sign(puckZ) * 0.5 : 0.4
+  }
+  const len = Math.hypot(nx, nz)
+  return { nx: nx / len, nz: nz / len }
 }
 
 /** Normal unitária do disco em relação à raquete (disco empurrado para fora). */
@@ -28,10 +81,20 @@ export function puckPaddleNormal(
   paddleZ: number,
   paddleVel: PlanarVelocity,
   fallbackAwayX: number,
+  clearTowardEnemyX?: number,
 ): { nx: number; nz: number; dist: number } {
   let nx = puckX - paddleX
   let nz = puckZ - paddleZ
   const dist = Math.hypot(nx, nz)
+
+  if (clearTowardEnemyX !== undefined && dist < PUCK_PADDLE_MIN_DIST) {
+    const behind = isPuckBehindPaddlePlanar(puckX, paddleX, clearTowardEnemyX)
+    const deep = dist < PUCK_PADDLE_MIN_DIST * DEEP_OVERLAP_RATIO
+    if (behind || deep) {
+      const sep = separationNormalTowardEnemy(puckZ, paddleZ, clearTowardEnemyX)
+      return { nx: sep.nx, nz: sep.nz, dist }
+    }
+  }
 
   if (dist >= 1e-5) {
     return { nx: nx / dist, nz: nz / dist, dist }
@@ -68,25 +131,46 @@ export function resolvePuckPaddleOverlap(
     paddleZ,
     paddleVel,
     fallbackAwayX,
+    clearTowardEnemyX,
   )
 
   if (dist >= PUCK_PADDLE_MIN_DIST) return false
 
-  // Coincidência: empurra para o gol adversário + leve desvio ao centro em Z.
-  if (dist < 1e-4) {
-    nx = Math.sign(clearTowardEnemyX) || 1
-    nz = Math.abs(puckZ) > 0.02 ? -Math.sign(puckZ) * 0.6 : 0.8
-    const nLen = Math.hypot(nx, nz)
-    nx /= nLen
-    nz /= nLen
-  }
+  const behind = isPuckBehindPaddlePlanar(puckX, paddleX, clearTowardEnemyX)
+  const useStrikeSide =
+    behind || dist < PUCK_PADDLE_MIN_DIST * DEEP_OVERLAP_RATIO
 
-  const sepX = paddleX + nx * PUCK_PADDLE_MIN_DIST
-  const sepZ = paddleZ + nz * PUCK_PADDLE_MIN_DIST
+  let sepX: number
+  let sepZ: number
+  if (useStrikeSide) {
+    const placed = placePuckOnStrikeSide(
+      paddleX,
+      paddleZ,
+      puckZ,
+      clearTowardEnemyX,
+    )
+    sepX = placed.x
+    sepZ = placed.z
+    const sep = separationNormalTowardEnemy(puckZ, paddleZ, clearTowardEnemyX)
+    nx = sep.nx
+    nz = sep.nz
+  } else {
+    if (dist < 1e-4) {
+      const sep = separationNormalTowardEnemy(puckZ, paddleZ, clearTowardEnemyX)
+      nx = sep.nx
+      nz = sep.nz
+    }
+    sepX = paddleX + nx * PUCK_PADDLE_MIN_DIST
+    sepZ = paddleZ + nz * PUCK_PADDLE_MIN_DIST
+  }
 
   const v = puckBody.linvel()
   let vx = v.x
   let vz = v.z
+
+  if (behind) {
+    vx = enforceClearVelocityX(vx, clearTowardEnemyX, MIN_SEPARATION_SPEED)
+  }
 
   const relVx = vx - paddleVel.x
   const relVz = vz - paddleVel.z
@@ -96,6 +180,10 @@ export function resolvePuckPaddleOverlap(
     const boost = MIN_SEPARATION_SPEED - outNormal
     vx += nx * boost
     vz += nz * boost
+  }
+
+  if (behind) {
+    vx = enforceClearVelocityX(vx, clearTowardEnemyX, MIN_SEPARATION_SPEED * 0.5)
   }
 
   const clamped = clampPlanarSpeed(vx, vz, MAX_PUCK_SPEED)
@@ -113,7 +201,42 @@ type PaddleOverlap = {
   clearTowardEnemyX: number
 }
 
-/** Resolve overlaps pela raquete mais próxima primeiro (reduz “sanduíche” na demo). */
+function paddleOverlapDist(
+  puckX: number,
+  puckZ: number,
+  paddle: PaddleOverlap,
+): number {
+  return Math.hypot(puckX - paddle.x, puckZ - paddle.z)
+}
+
+function sortPaddlesForOverlap(
+  puckX: number,
+  puckZ: number,
+  paddles: PaddleOverlap[],
+): PaddleOverlap[] {
+  const bothNear =
+    paddles.length > 1 &&
+    paddles.every((p) => paddleOverlapDist(puckX, puckZ, p) < PUCK_PADDLE_MIN_DIST)
+
+  if (bothNear) {
+    const behindFirst = paddles.filter((p) =>
+      isPuckBehindPaddlePlanar(puckX, p.x, p.clearTowardEnemyX),
+    )
+    const others = paddles.filter(
+      (p) => !isPuckBehindPaddlePlanar(puckX, p.x, p.clearTowardEnemyX),
+    )
+    const byDist = (a: PaddleOverlap, b: PaddleOverlap) =>
+      paddleOverlapDist(puckX, puckZ, a) - paddleOverlapDist(puckX, puckZ, b)
+    return [...behindFirst.sort(byDist), ...others.sort(byDist)]
+  }
+
+  return [...paddles].sort(
+    (a, b) =>
+      paddleOverlapDist(puckX, puckZ, a) - paddleOverlapDist(puckX, puckZ, b),
+  )
+}
+
+/** Resolve overlaps; prioriza raquete com disco “atrás” em sanduíche. */
 export function resolvePuckPaddleOverlaps(
   puckBody: RapierRigidBody,
   puckX: number,
@@ -123,7 +246,15 @@ export function resolvePuckPaddleOverlaps(
   const puck: PuckSample = { x: puckX, z: puckZ, vx: 0, vz: 0 }
   let list = paddles
 
-  if (isCenterEngageZone(puck) && paddles.length > 1) {
+  const anyBehind = paddles.some((p) =>
+    isPuckBehindPaddlePlanar(puckX, p.x, p.clearTowardEnemyX),
+  )
+
+  if (
+    isCenterEngageZone(puck) &&
+    paddles.length > 1 &&
+    !anyBehind
+  ) {
     const striker = pickCenterStriker(puck)
     const strikerIdx = paddles.findIndex((p) =>
       striker === 1 ? p.clearTowardEnemyX < 0 : p.clearTowardEnemyX > 0,
@@ -131,11 +262,7 @@ export function resolvePuckPaddleOverlaps(
     if (strikerIdx >= 0) list = [paddles[strikerIdx]]
   }
 
-  const sorted = [...list].sort((a, b) => {
-    const da = Math.hypot(puckX - a.x, puckZ - a.z)
-    const db = Math.hypot(puckX - b.x, puckZ - b.z)
-    return da - db
-  })
+  const sorted = sortPaddlesForOverlap(puckX, puckZ, list)
 
   let px = puckX
   let pz = puckZ

@@ -15,12 +15,9 @@ import { arenaEmissive } from '../../lib/arenaPulse'
 import { useArenaFxStore } from '../../stores/arenaFxStore'
 import { TableAirHoles } from './TableAirHoles'
 import { TableLogo } from './TableLogo'
-import {
-  cornerMarkRotationZ,
-  PLAYFIELD_Y,
-  TABLE_HD,
-  TABLE_HW,
-} from './tableVisualUtils'
+import { TABLE_CORNER_CHAMFER } from '../../constants/physics'
+import { getCornerChamferLayout } from '../../constants/tableCorners'
+import { PLAYFIELD_Y, TABLE_HD, TABLE_HW } from './tableVisualUtils'
 
 const SURFACE_Y = TABLE_SURFACE_THICKNESS / 2
 const BORDER_Y = TABLE_BORDER_HEIGHT / 2 + TABLE_SURFACE_THICKNESS
@@ -151,22 +148,26 @@ function TableMarkings() {
       </mesh>
 
       {([-1, 1] as const).flatMap((sx) =>
-        ([-1, 1] as const).map((sz) => (
-          <mesh
-            key={`corner-${sx}-${sz}`}
-            position={[sx * (TABLE_HW - 0.14), y, sz * (TABLE_HD - 0.08)]}
-            rotation={[-Math.PI / 2, 0, cornerMarkRotationZ(sx, sz)]}
-          >
-            <ringGeometry args={[0.04, 0.052, 24, 1, 0, Math.PI / 2]} />
-            <meshStandardMaterial
-              color={COLORS.tableNeonPink}
-              emissive={COLORS.tableNeonPink}
-              emissiveIntensity={0.5}
-              transparent
-              opacity={0.65}
-            />
-          </mesh>
-        )),
+        ([-1, 1] as const).map((sz) => {
+          const layout = getCornerChamferLayout(sx, sz)
+          const len = layout.args[0] * 2
+          return (
+            <mesh
+              key={`corner-${sx}-${sz}`}
+              position={[layout.position[0], y, layout.position[2]]}
+              rotation={[-Math.PI / 2, layout.rotation[1], 0]}
+            >
+              <planeGeometry args={[len, 0.012]} />
+              <meshStandardMaterial
+                color={COLORS.tableNeonPink}
+                emissive={COLORS.tableNeonPink}
+                emissiveIntensity={0.5}
+                transparent
+                opacity={0.65}
+              />
+            </mesh>
+          )
+        }),
       )}
 
       {[-0.55, 0.55].map((x) => (
@@ -214,6 +215,35 @@ function RailLedStrip({
   )
 }
 
+function CornerChamferRail({
+  signX,
+  signZ,
+}: {
+  signX: 1 | -1
+  signZ: 1 | -1
+}) {
+  const layout = getCornerChamferLayout(signX, signZ)
+  const [halfAlong, halfH, halfT] = layout.args
+
+  return (
+    <mesh
+      position={layout.position}
+      rotation={layout.rotation}
+      castShadow
+      receiveShadow
+    >
+      <boxGeometry args={[halfAlong * 2, halfH * 2, halfT * 2]} />
+      <meshStandardMaterial
+        color={COLORS.tableBorderDark}
+        emissive={COLORS.tableBorder}
+        emissiveIntensity={0.3}
+        roughness={0.3}
+        metalness={0.15}
+      />
+    </mesh>
+  )
+}
+
 function EndRailSegment({
   signX,
   signZ,
@@ -221,7 +251,7 @@ function EndRailSegment({
   signX: number
   signZ: number
 }) {
-  const endSegHalfZ = (TABLE_HD - GOAL_HALF_WIDTH) / 2
+  const endSegHalfZ = (TABLE_HD - GOAL_HALF_WIDTH - TABLE_CORNER_CHAMFER) / 2
   const endSegCenterZ = GOAL_HALF_WIDTH + endSegHalfZ
   const bt = TABLE_BORDER_THICKNESS
   const bh = TABLE_BORDER_HEIGHT
@@ -248,10 +278,12 @@ function TableRails({ groupRef }: { groupRef: RefObject<Group | null> }) {
   const capY = BORDER_Y + bh / 2 - 0.008
   const ledY = BORDER_Y + bh / 2 + 0.002
 
+  const sideLen = TABLE_WIDTH + bt * 2 - TABLE_CORNER_CHAMFER * 2
+
   const sideRail = (zSign: number) => (
     <group key={zSign}>
       <mesh position={[0, BORDER_Y, zSign * (TABLE_HD + bt / 2)]} castShadow receiveShadow>
-        <boxGeometry args={[TABLE_WIDTH + bt * 2, bh, bt]} />
+        <boxGeometry args={[sideLen, bh, bt]} />
         <meshStandardMaterial
           color={COLORS.tableBorderDark}
           emissive={COLORS.tableBorder}
@@ -261,7 +293,7 @@ function TableRails({ groupRef }: { groupRef: RefObject<Group | null> }) {
         />
       </mesh>
       <mesh position={[0, capY, zSign * (TABLE_HD + bt / 2 + 0.004)]}>
-        <boxGeometry args={[TABLE_WIDTH + bt * 2.2, 0.018, bt + 0.01]} />
+        <boxGeometry args={[sideLen + bt * 0.2, 0.018, bt + 0.01]} />
         <meshStandardMaterial
           color={COLORS.tableRailCap}
           emissive={COLORS.tableBorder}
@@ -272,7 +304,7 @@ function TableRails({ groupRef }: { groupRef: RefObject<Group | null> }) {
       </mesh>
       <RailLedStrip
         position={[0, ledY, zSign * (TABLE_HD + bt / 2)]}
-        size={[TABLE_WIDTH + bt * 1.6, 0.006]}
+        size={[sideLen + bt * 0.6, 0.006]}
       />
     </group>
   )
@@ -285,24 +317,10 @@ function TableRails({ groupRef }: { groupRef: RefObject<Group | null> }) {
       <EndRailSegment signX={1} signZ={1} />
       {sideRail(-1)}
       {sideRail(1)}
-
-      {[
-        [-TABLE_HW - bt / 2, TABLE_HD],
-        [-TABLE_HW - bt / 2, -TABLE_HD],
-        [TABLE_HW + bt / 2, TABLE_HD],
-        [TABLE_HW + bt / 2, -TABLE_HD],
-      ].map(([x, z], i) => (
-        <mesh key={`post-${i}`} position={[x, BORDER_Y + bh * 0.15, z]}>
-          <cylinderGeometry args={[0.028, 0.032, bh * 0.35, 12]} />
-          <meshStandardMaterial
-            color={COLORS.tableRailCap}
-            emissive={COLORS.tableBorder}
-            emissiveIntensity={0.5}
-            metalness={0.3}
-            roughness={0.2}
-          />
-        </mesh>
-      ))}
+      <CornerChamferRail signX={-1} signZ={-1} />
+      <CornerChamferRail signX={-1} signZ={1} />
+      <CornerChamferRail signX={1} signZ={-1} />
+      <CornerChamferRail signX={1} signZ={1} />
     </group>
   )
 }

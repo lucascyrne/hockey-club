@@ -23,6 +23,7 @@ export function resolvePaddlePuckCollision(
   paddleVel: PlanarVelocity,
   fallbackAwayX = 1,
   hitStrength = 1,
+  clearTowardEnemyX = fallbackAwayX > 0 ? -1 : 1,
 ) {
   const strength = Math.max(0.2, Math.min(1.5, hitStrength))
   const { nx, nz, dist } = puckPaddleNormal(
@@ -32,6 +33,7 @@ export function resolvePaddlePuckCollision(
     paddleZ,
     paddleVel,
     fallbackAwayX,
+    clearTowardEnemyX,
   )
 
   const overlap = PUCK_PADDLE_MIN_DIST - dist
@@ -44,7 +46,7 @@ export function resolvePaddlePuckCollision(
       paddleZ,
       paddleVel,
       fallbackAwayX,
-      fallbackAwayX > 0 ? -1 : 1,
+      clearTowardEnemyX,
     )
   }
 
@@ -78,7 +80,7 @@ export function resolvePaddlePuckCollision(
     newVz += nz * boost
   }
 
-  if (fallbackAwayX < 0 && strength < 0.8) {
+  if (fallbackAwayX < 0 && strength < 0.85 && newVx < 0) {
     const gentleMin = 0.55 + strength * 0.9
     if (newVx < gentleMin) newVx = gentleMin
   }

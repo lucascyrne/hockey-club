@@ -48,7 +48,7 @@ Configuração `cpuDifficulty` (1–3), persistida. Nível **3** = comportamento
 | 2 | Tática | Reação ~200 ms, pausas 0,4–1,1 s; modo ataque/defesa conforme velocidade e posição do disco |
 | 3 | Desafio | Reação 80 ms, lead 0,1 s, velocidade 70%, erro ±0,03 m (MVP) |
 
-Implementação: perfis em `lib/cpuDifficulty.ts`, dwell/modo em `systems/cpuBehavior.ts`, IA em `systems/cpuPaddle.ts`.
+Implementação: pacote `src/ai/` (Sense→Think→Plan→Act), defesa **goal-first** (`goalPath`, `goalDefense`, `safety`), perfis em `lib/cpuDifficulty.ts`. Debug dev: Leva **CPU Debug** + overlay 3D. Regressão: `npm run sim:defense`.
 
 Não usar pathfinding; movimento direto no plano XZ com clamp.
 

@@ -8,13 +8,13 @@ type SceneLightingProps = {
 
 export function SceneLighting({ variant = 'match' }: SceneLightingProps) {
   const isHero = variant === 'hero'
-  const fogNear = isHero ? 3.5 : 3
-  const fogFar = isHero ? 14 : 14
+  const fogNear = isHero ? 8 : 3
+  const fogFar = isHero ? 28 : 14
   const fogColor = isHero ? HERO_FOG : THEME.colors.fog
 
   return (
     <>
-      <ambientLight intensity={isHero ? 0.2 : 0.48} />
+      <ambientLight intensity={isHero ? 0.45 : 0.48} />
       <directionalLight
         position={[4, 9, 6]}
         intensity={isHero ? 0.5 : 1.3}

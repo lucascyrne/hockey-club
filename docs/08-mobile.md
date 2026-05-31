@@ -60,7 +60,7 @@ Z-index: drawer > placar > linha de divisão > canvas. Placar com `pointer-event
 - [ ] Desktop — 2P landscape: split lateral; dois placares no topo de cada metade (`dualTop`)
 - [ ] HUD — um botão ☰, sem ícones sobrepostos no topo
 - [ ] iframe em horizonte.dev.br — touch OK
-- [ ] Menu em telefone: sem hero 3D pesado (`reduceMenuFx`)
+- [ ] Menu em telefone: hero 3D + anéis lite (3 anéis); DPR 1 (`reduceMenuFx`)
 
 ## Embed
 

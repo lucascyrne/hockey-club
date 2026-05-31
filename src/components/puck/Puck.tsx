@@ -31,12 +31,14 @@ import { usePuckFlowStore } from '../../stores/puckFlowStore'
 import { useArenaFxStore } from '../../stores/arenaFxStore'
 import {
   registerPuckActions,
+  triggerFaceoff,
   unregisterPuckActions,
 } from '../../stores/puckActions'
 import { paddleMotionState } from '../../stores/paddleMotionState'
+import { getCpuStrikeStrength } from '../../ai/actuation/strikeProfile'
 import { resolvePaddlePuckCollision } from '../../systems/paddleHit'
 import { enforcePuckTableBounds } from '../../systems/puckBounds'
-import { resolvePuckPaddleOverlaps } from '../../systems/puckContact'
+import { runPuckPaddleSafety } from '../../systems/puckPaddleSafety'
 import { snapPuckToTablePlane } from '../../systems/puckBounds'
 import {
   computeChuteTarget,
@@ -44,6 +46,7 @@ import {
 } from '../../systems/puckGoalSequence'
 import { beginRoundCountdown } from '../../systems/roundCountdown'
 import { getLateralFaceoffSpawn, type PuckSpawnState } from '../../systems/puckSpawn'
+import { resetPaddlesToSpawn } from '../../systems/resetRound'
 import { restartCurrentMatch } from '../../systems/restartMatch'
 import { detectGoal } from '../../systems/rules'
 import { getCpuProfile } from '../../lib/cpuDifficulty'
@@ -171,6 +174,12 @@ export function Puck() {
         b.setLinvel({ x: 0, y: 0, z: 0 }, true)
         b.setAngvel({ x: 0, y: 0, z: 0 }, true)
       },
+      nudge: (vx, vz) => {
+        const b = bodyRef.current
+        if (!b) return
+        b.setLinvel({ x: vx, y: 0, z: vz }, true)
+        b.wakeUp()
+      },
     })
 
     const body = bodyRef.current
@@ -213,10 +222,11 @@ export function Puck() {
 
     const pt = other.translation()
     const paddleVel = getPaddleVelocity(playerId)
-    const hitStrength =
+    const baseHit =
       playerId === 2
         ? getCpuProfile(useSettingsStore.getState().cpuDifficulty).hitStrength
         : 1
+    const hitStrength = playerId === 2 ? getCpuStrikeStrength(baseHit) : baseHit
     resolvePaddlePuckCollision(
       body,
       t.x,
@@ -226,6 +236,7 @@ export function Puck() {
       paddleVel,
       playerId === 1 ? 1 : -1,
       hitStrength,
+      playerId === 1 ? -1 : 1,
     )
 
     const v = body.linvel()
@@ -258,13 +269,22 @@ export function Puck() {
   }, [])
 
   useBeforePhysicsStep(() => {
-    if (!isOnlineGuest()) return
     const body = bodyRef.current
     if (!body) return
-    const s = onlineGuestPuck.current
-    const y = body.translation().y
-    body.setTranslation({ x: s.x, y, z: s.z }, true)
-    body.setLinvel({ x: s.vx, y: 0, z: s.vz }, true)
+
+    if (isOnlineGuest()) {
+      const s = onlineGuestPuck.current
+      const y = body.translation().y
+      body.setTranslation({ x: s.x, y, z: s.z }, true)
+      body.setLinvel({ x: s.vx, y: 0, z: s.vz }, true)
+      return
+    }
+
+    const phase = useGameStore.getState().phase
+    const flow = usePuckFlowStore.getState().flow
+    if (phase === 'playing' && flow === 'play') {
+      runPuckPaddleSafety(body)
+    }
   })
 
   useAfterPhysicsStep(() => {
@@ -277,18 +297,7 @@ export function Puck() {
       const s = onlineGuestPuck.current
 
       if (phase === 'playing' && flow === 'play') {
-        const localId = useSessionStore.getState().localPlayerId
-        const paddle =
-          localId === 1 ? paddleMotionState.p1 : paddleMotionState.p2
-        resolvePuckPaddleOverlaps(body, s.x, s.z, [
-          {
-            x: paddle.x,
-            z: paddle.z,
-            vel: getPaddleVelocity(localId),
-            awayX: localId === 1 ? 1 : -1,
-            clearTowardEnemyX: localId === 1 ? -1 : 1,
-          },
-        ])
+        runPuckPaddleSafety(body)
         const pos = body.translation()
         const v = body.linvel()
         s.x = pos.x
@@ -354,6 +363,13 @@ export function Puck() {
       const scorer = detectGoal(pos.x, pos.z)
       if (scorer !== null) {
         useGameStore.getState().onGoal(scorer)
+        if (isMenuDemoActive()) {
+          usePuckFlowStore.getState().resetFlow()
+          useGameStore.getState().resumePlaying()
+          resetPaddlesToSpawn()
+          triggerFaceoff(getLateralFaceoffSpawn())
+          return
+        }
         if (isOnlineHost()) broadcastGoal(scorer)
         if (useGameStore.getState().phase === 'gameOver') return
         const { from, to } = computeChuteTarget(scorer, pos.x, pos.y, pos.z)
@@ -361,26 +377,9 @@ export function Puck() {
         return
       }
 
-      const p1 = paddleMotionState.p1
-      const p2 = paddleMotionState.p2
-
-      resolvePuckPaddleOverlaps(body, pos.x, pos.z, [
-        {
-          x: p1.x,
-          z: p1.z,
-          vel: getPaddleVelocity(1),
-          awayX: 1,
-          clearTowardEnemyX: -1,
-        },
-        {
-          x: p2.x,
-          z: p2.z,
-          vel: getPaddleVelocity(2),
-          awayX: -1,
-          clearTowardEnemyX: 1,
-        },
-      ])
-      snapPuckToTablePlane(body)
+      if (flow === 'play') {
+        runPuckPaddleSafety(body)
+      }
     }
   })
 

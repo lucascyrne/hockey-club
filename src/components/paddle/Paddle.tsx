@@ -14,6 +14,7 @@ import {
 } from '../../constants/paddle'
 import { THEME } from '../../theme/palette'
 import { registerPaddleVelocity } from '../../lib/paddleRegistry'
+import { registerPaddlePose } from '../../lib/paddlePositionRegistry'
 import { stepPaddleMotion } from '../../lib/paddleMotion'
 import { PaddleVelocityTracker } from '../../lib/paddleVelocityTracker'
 import type { PlayerId } from '../../systems/bounds'
@@ -101,6 +102,8 @@ export function Paddle({ playerId, color, emissive, spawn }: PaddleProps) {
       body.setTranslation({ x: spawn.x, y: PADDLE_Y, z: spawn.z }, true)
     }
 
+    registerPaddlePose(playerId, { x: spawn.x, z: spawn.z, vx: 0, vz: 0 })
+
     return registerPaddleVelocity(playerId, () => tracker.current.getVelocity())
   }, [playerId, spawn.x, spawn.z])
 
@@ -117,6 +120,13 @@ export function Paddle({ playerId, color, emissive, spawn }: PaddleProps) {
       z: motion.z,
     })
     tracker.current.record(motion.x, motion.z)
+    const vel = tracker.current.getVelocity()
+    registerPaddlePose(playerId, {
+      x: motion.x,
+      z: motion.z,
+      vx: vel.x,
+      vz: vel.z,
+    })
   })
 
   return (

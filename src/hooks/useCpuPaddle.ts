@@ -22,8 +22,17 @@ export function useCpuPaddle() {
 
       const phase = useGameStore.getState().phase
       if (isVsCpuMode() && phase === 'playing' && !isLocalMatchPaused()) {
-        const profile = getCpuProfile(useSettingsStore.getState().cpuDifficulty)
-        tickCpuPlayer(2, state.current, behavior.current, profile, now, delta)
+        const difficulty = useSettingsStore.getState().cpuDifficulty
+        const profile = getCpuProfile(difficulty)
+        tickCpuPlayer(
+          2,
+          state.current,
+          behavior.current,
+          profile,
+          difficulty,
+          now,
+          delta,
+        )
       }
 
       raf.current = requestAnimationFrame(tick)

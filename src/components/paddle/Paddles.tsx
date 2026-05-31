@@ -1,5 +1,6 @@
 import { PADDLE_SPAWN } from '../../constants/paddle'
 import { COLORS } from '../../constants/table'
+import { CpuDebugOverlay } from '../dev/CpuDebugOverlay'
 import { DevOnly } from '../dev/DevOnly'
 import { useCpuPaddle } from '../../hooks/useCpuPaddle'
 import { usePaddleInput } from '../../hooks/usePaddleInput'
@@ -15,6 +16,7 @@ export function Paddles() {
       <DevOnly>
         <PlayerArmGuide playerId={1} color={COLORS.paddleP1} />
         <PlayerArmGuide playerId={2} color={COLORS.paddleP2} />
+        <CpuDebugOverlay />
       </DevOnly>
       <Paddle
         playerId={1}

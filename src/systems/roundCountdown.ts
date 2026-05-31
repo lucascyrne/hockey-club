@@ -16,6 +16,8 @@ export function cancelRoundCountdown() {
 
 export function beginRoundCountdown() {
   if (isMenuDemoActive()) {
+    usePuckFlowStore.getState().resetFlow()
+    useGameStore.getState().resumePlaying()
     triggerFaceoff(getLateralFaceoffSpawn())
     return
   }

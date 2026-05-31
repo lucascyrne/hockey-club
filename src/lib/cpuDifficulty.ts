@@ -1,3 +1,4 @@
+import { resolveCpuConfig, type CpuConfig } from '../ai/config'
 import { WIN_TARGET } from '../constants/game'
 import {
   CPU_ERROR_HALF,
@@ -44,9 +45,9 @@ const PROFILE_2: CpuProfile = {
   leadTime: 0.09,
   errorHalf: 0.04,
   errorRefreshMs: 650,
-  hitStrength: 0.82,
+  hitStrength: 0.9,
   defenseWeight: 0.72,
-  attackAggression: 0.42,
+  attackAggression: 0.5,
   clearWindowMs: { min: 1100, max: 2100 },
   wallBias: 0.6,
   dwellOnHalfMs: { min: 450, max: 900 },
@@ -74,6 +75,18 @@ const PROFILES: Record<CpuDifficulty, CpuProfile> = {
 
 export function getCpuProfile(level: CpuDifficulty): CpuProfile {
   return PROFILES[level]
+}
+
+export {
+  resolveCpuConfig,
+  createCpuConfig,
+  type CpuConfig,
+  type Personality,
+  type TacticalStyle,
+} from '../ai/config'
+
+export function getCpuConfig(level: CpuDifficulty): CpuConfig {
+  return resolveCpuConfig(level, getCpuProfile(level))
 }
 
 export function normalizeWinTarget(v: number): WinTarget {

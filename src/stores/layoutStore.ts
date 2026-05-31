@@ -22,7 +22,8 @@ function readLayout(): Pick<
     window.matchMedia('(pointer: coarse)').matches
   const splitAxis = resolveSplitAxis(width, height, isCoarsePointer)
   const isMobile = isCoarsePointer || width < 768
-  const reduceMenuFx = isCoarsePointer || height > width
+  /** DPR/geom reduzidos no menu em touch ou viewport estreito; anéis ficam em modo lite. */
+  const reduceMenuFx = isCoarsePointer || width < 768
 
   return { width, height, isCoarsePointer, splitAxis, isMobile, reduceMenuFx }
 }

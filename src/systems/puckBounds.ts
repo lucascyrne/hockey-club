@@ -6,6 +6,12 @@ import {
   TABLE_PLAY_HALF_Z,
   WALL_PHYSICS,
 } from '../constants/physics'
+import {
+  cornerDiagonalMaxSum,
+  cornerSignsFromPosition,
+  isPuckInCornerWedge,
+  projectToCornerDiagonal,
+} from '../constants/tableCorners'
 import { wallEscapeVelocity } from './puckContact'
 import { GOAL_LINE_X_NEG, GOAL_LINE_X_POS } from './rules'
 
@@ -14,6 +20,53 @@ const PUCK_Y_MAX = PUCK_REST_Y + 0.006
 const WALL_MIN_ESCAPE = 0.9
 /** Profundidade máxima na boca do gol antes de repelir (evita escape no void). */
 const GOAL_POCKET_X = 0.09
+
+const CORNER_INSET = 0.012
+
+/** Clamp no meio-plano da chanfra — evita disco no triângulo morto. */
+function applyCornerDiagonalClamp(
+  x: number,
+  z: number,
+  vx: number,
+  vz: number,
+): { x: number; z: number; vx: number; vz: number; changed: boolean } {
+  if (!isPuckInCornerWedge(x, z)) {
+    return { x, z, vx, vz, changed: false }
+  }
+
+  const signs = cornerSignsFromPosition(x, z)
+  if (!signs) return { x, z, vx, vz, changed: false }
+
+  const { signX, signZ } = signs
+  const { x: px, z: pz, nx, nz } = projectToCornerDiagonal(
+    x,
+    z,
+    signX,
+    signZ,
+  )
+
+  let newX = px + nx * CORNER_INSET
+  let newZ = pz + nz * CORNER_INSET
+
+  const maxSum = cornerDiagonalMaxSum() - CORNER_INSET
+  const sum = signX * newX + signZ * newZ
+  if (sum > maxSum) {
+    const excess = sum - maxSum
+    newX -= signX * excess
+    newZ -= signZ * excess
+  }
+
+  let newVx = vx
+  let newVz = vz
+
+  const out = newVx * nx + newVz * nz
+  if (out < WALL_MIN_ESCAPE) {
+    newVx += nx * WALL_MIN_ESCAPE
+    newVz += nz * WALL_MIN_ESCAPE
+  }
+
+  return { x: newX, z: newZ, vx: newVx, vz: newVz, changed: true }
+}
 
 /** Mantém o disco no plano da mesa (evita “flutuar” após colisões degeneradas). */
 export function snapPuckToTablePlane(body: RapierRigidBody) {
@@ -103,6 +156,15 @@ export function enforcePuckTableBounds(body: RapierRigidBody) {
       vx = -Math.sign(x || 1) * WALL_MIN_ESCAPE * 0.85
       changed = true
     }
+  }
+
+  const corner = applyCornerDiagonalClamp(x, z, vx, vz)
+  if (corner.changed) {
+    x = corner.x
+    z = corner.z
+    vx = corner.vx
+    vz = corner.vz
+    changed = true
   }
 
   if (!changed) return

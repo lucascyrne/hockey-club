@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { DEMO_WIN_TARGET } from '../constants/game'
 import { DEFAULT_WIN_TARGET } from '../lib/cpuDifficulty'
 import { isMenuDemoActive } from './menuDemoStore'
 import { usePuckFlowStore } from './puckFlowStore'
@@ -32,6 +33,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get()
     if (state.phase !== 'playing') return
 
+    if (isMenuDemoActive()) {
+      set({ lastGoalBy: scorer })
+      return
+    }
+
     const scoreP1 = state.scoreP1 + (scorer === 1 ? 1 : 0)
     const scoreP2 = state.scoreP2 + (scorer === 2 ? 1 : 0)
     const winner =
@@ -60,7 +66,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   resetMatch: () => {
     usePuckFlowStore.getState().resetFlow()
-    const winTarget = useSettingsStore.getState().winTarget
+    const winTarget = isMenuDemoActive()
+      ? DEMO_WIN_TARGET
+      : useSettingsStore.getState().winTarget
     set({
       phase: 'playing',
       scoreP1: 0,

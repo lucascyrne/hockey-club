@@ -10,12 +10,19 @@ export const DEMO_PUCK_CHUTE_MS = 280
 export const PUCK_CHUTE_DEPTH_X = 0.14
 export const PUCK_CHUTE_DROP_Y = 0.06
 
+/** Demo hero: vitória praticamente impossível (rally infinito). */
+export const DEMO_WIN_TARGET = 999
+
 /** Watchdog: disco parado na demo — velocidade XZ abaixo disto (m/s). */
 export const DEMO_STALL_SPEED = 0.15
-/** Tempo contínuo parado antes de forçar novo saque (ms). */
-export const DEMO_STALL_MS = 1100
+/** Tempo parado antes de impulso de desbloqueio (ms). */
+export const DEMO_STALL_NUDGE_MS = 900
+/** Tempo parado antes de faceoff completo (ms). */
+export const DEMO_STALL_FACEOFF_MS = 2500
 /** Intervalo mínimo entre saques automáticos por stall (ms). */
 export const DEMO_STALL_COOLDOWN_MS = 2000
+/** Impulso mínimo do nudge anti-stall (m/s). */
+export const DEMO_STALL_NUDGE_SPEED = 1.8
 
 /** Impulso do saque lateral após gol (m/s). */
 export const FACEOFF_SPEED_MIN = 2
