@@ -94,15 +94,19 @@ function NeonRing({
 }
 
 export function LandingNeonRings() {
-  const { width, height, reduceMenuFx } = useLayoutStore((s) => ({
-    width: s.width,
-    height: s.height,
-    reduceMenuFx: s.reduceMenuFx,
-  }))
+  const width = useLayoutStore((s) => s.width)
+  const height = useLayoutStore((s) => s.height)
+  const reduceMenuFx = useLayoutStore((s) => s.reduceMenuFx)
   const portrait = height > width
   const ellipse = useMemo(() => ringEllipse(portrait), [portrait])
-  const rings = reduceMenuFx ? RINGS.slice(0, 3) : RINGS
-  const segments: [number, number] = reduceMenuFx ? [28, 72] : [40, 128]
+  const rings = useMemo(
+    () => (reduceMenuFx ? RINGS.slice(0, 3) : RINGS),
+    [reduceMenuFx],
+  )
+  const segments = useMemo<[number, number]>(
+    () => (reduceMenuFx ? [28, 72] : [40, 128]),
+    [reduceMenuFx],
+  )
   const fieldRef = useRef<Group>(null)
   const haloRef = useRef<Mesh>(null)
 
