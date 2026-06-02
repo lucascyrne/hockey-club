@@ -21,6 +21,7 @@ export const en: Translations = {
       label: 'Settings',
       hint: 'Language, music and sound effects volume',
     },
+    studioGames: 'More games from Horizonte Studio',
   },
   settings: {
     title: 'Settings',

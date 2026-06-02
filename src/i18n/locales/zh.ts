@@ -21,6 +21,7 @@ export const zh: Translations = {
       label: '设置',
       hint: '语言、音乐与音效音量',
     },
+    studioGames: '更多 Horizonte Studio 游戏',
   },
   settings: {
     title: '设置',

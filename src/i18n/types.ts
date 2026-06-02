@@ -18,6 +18,7 @@ export type Translations = {
     local2p: { label: string; hint: string }
     online: { label: string; hint: string; badge: string }
     settings: { label: string; hint: string }
+    studioGames: string
   }
   settings: {
     title: string

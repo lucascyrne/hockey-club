@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from '../../i18n'
 import { MenuHeroCanvas } from '../menu/MenuHeroCanvas'
@@ -8,6 +9,8 @@ import { MenuLogo } from './MenuLogo'
 import { MenuModeNav } from './MenuModeNav'
 import { SettingsModal } from './SettingsModal'
 import '../../styles/menu.css'
+
+const HORIZONTE_PROJECTS_URL = 'https://www.horizonte.dev.br/projects'
 
 export function MainMenu() {
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -42,6 +45,16 @@ export function MainMenu() {
           onSelect={onSelect}
           onOpenSettings={() => setSettingsOpen(true)}
         />
+
+        <a
+          className="main-menu__studio-link"
+          href={HORIZONTE_PROJECTS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t.menu.studioGames}
+          <ExternalLink size={16} strokeWidth={2} aria-hidden />
+        </a>
       </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
