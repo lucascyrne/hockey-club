@@ -17,12 +17,16 @@ type OnlineStore = {
   errorCode: string | null
   disconnectMessage: boolean
   winTarget: WinTarget | null
+  localRematchReady: boolean
+  peerRematchReady: boolean
   setStatus: (status: OnlineConnectionStatus) => void
   setRoom: (code: string, role: NetPlayerId) => void
   setPeerJoined: (joined: boolean) => void
   setError: (code: string | null) => void
   setDisconnectMessage: (show: boolean) => void
   setWinTarget: (winTarget: WinTarget | null) => void
+  setRematchReady: (local: boolean, peer: boolean) => void
+  setLocalRematchReady: (ready: boolean) => void
   reset: () => void
 }
 
@@ -34,6 +38,8 @@ const initial = {
   errorCode: null,
   disconnectMessage: false,
   winTarget: null,
+  localRematchReady: false,
+  peerRematchReady: false,
 }
 
 export const useOnlineStore = create<OnlineStore>((set) => ({
@@ -49,5 +55,8 @@ export const useOnlineStore = create<OnlineStore>((set) => ({
     })),
   setDisconnectMessage: (disconnectMessage) => set({ disconnectMessage }),
   setWinTarget: (winTarget) => set({ winTarget }),
+  setRematchReady: (local, peer) =>
+    set({ localRematchReady: local, peerRematchReady: peer }),
+  setLocalRematchReady: (localRematchReady) => set({ localRematchReady }),
   reset: () => set({ ...initial }),
 }))

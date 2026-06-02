@@ -64,6 +64,8 @@ export type Translations = {
     help: string
     language: string
     restart: string
+    waitingRematch: string
+    hintOnline: string
     countdownPuck: string
     goal: string
     victory: string

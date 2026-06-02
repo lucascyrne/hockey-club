@@ -1,16 +1,12 @@
 import type { S2C } from '../../shared/protocol'
+import { playGoalSfx } from '../audio/events'
+import { applySnapshot, resetOnlineNetState, setNetInterpDelayMs, TICK_MS } from '../lib/onlineNetState'
+import { useArenaFxStore } from '../stores/arenaFxStore'
 import { useRoundCountdownStore } from '../stores/roundCountdownStore'
 import { useGameStore } from '../stores/gameStore'
 import { usePuckFlowStore } from '../stores/puckFlowStore'
 import { useOnlineStore } from '../stores/onlineStore'
 import { useSessionStore } from '../stores/sessionStore'
-import { paddleTargets } from '../stores/paddleTargets'
-import {
-  applyGuestState,
-  onlineRemoteInput,
-  resetOnlineNetState,
-} from '../lib/onlineNetState'
-import { resetOnlineSyncSeq } from './onlineSyncSeq'
 export function handleServerMessage(msg: S2C) {
   switch (msg.t) {
     case 'room':
@@ -28,24 +24,29 @@ export function handleServerMessage(msg: S2C) {
       }
       break
     case 'match': {
-      resetOnlineSyncSeq()
       resetOnlineNetState()
+      setNetInterpDelayMs(TICK_MS)
+      const role = useOnlineStore.getState().role ?? 1
+      useOnlineStore.getState().setRematchReady(false, false)
       useOnlineStore.getState().setWinTarget(msg.winTarget)
       useOnlineStore.getState().setStatus('playing')
-      const role = useOnlineStore.getState().role ?? 1
       useSessionStore.getState().startOnlineMatch(role, msg.winTarget)
       break
     }
-    case 'state':
-      applyNetState(msg.state)
+    case 'rematch': {
+      const localRole = useOnlineStore.getState().role ?? 1
+      const localReady = localRole === 1 ? msg.ready[0] : msg.ready[1]
+      const peerReady = localRole === 1 ? msg.ready[1] : msg.ready[0]
+      useOnlineStore.getState().setRematchReady(localReady, peerReady)
       break
-    case 'remoteInput':
-      if (useOnlineStore.getState().role === 1) {
-        handleRelayedInput(msg)
-      }
+    }
+    case 'snapshot':
+      applySnapshot(msg.snapshot)
+      syncGameFromSnapshot(msg.snapshot)
       break
     case 'goal':
-      applyNetGoal(msg.scorer)
+      playGoalSfx()
+      useArenaFxStore.getState().triggerImpact(0.85)
       break
     case 'error':
       useOnlineStore.getState().setError(msg.code)
@@ -55,69 +56,46 @@ export function handleServerMessage(msg: S2C) {
   }
 }
 
-function applyNetState(state: import('../../shared/protocol').StatePayload) {
-  if (useOnlineStore.getState().role !== 2) return
-  applyGuestState(state)
-  syncGuestGameFromState(state)
-}
-
-function syncGuestGameFromState(
-  state: import('../../shared/protocol').StatePayload,
+function syncGameFromSnapshot(
+  snapshot: import('../../shared/protocol').SnapshotPayload,
 ) {
   const game = useGameStore.getState()
-  if (game.scoreP1 !== state.scores[0] || game.scoreP2 !== state.scores[1]) {
+  if (game.scoreP1 !== snapshot.scores[0] || game.scoreP2 !== snapshot.scores[1]) {
     useGameStore.setState({
-      scoreP1: state.scores[0],
-      scoreP2: state.scores[1],
+      scoreP1: snapshot.scores[0],
+      scoreP2: snapshot.scores[1],
     })
   }
 
-  if (game.phase !== state.phase) {
-    if (state.phase === 'playing' && game.phase === 'countdown') {
+  if (game.phase !== snapshot.phase) {
+    if (snapshot.phase === 'playing' && game.phase === 'countdown') {
       useGameStore.getState().resumePlaying()
-    } else if (state.phase === 'countdown' && game.phase !== 'countdown') {
+    } else if (snapshot.phase === 'countdown' && game.phase !== 'countdown') {
       useGameStore.getState().enterCountdown()
+    } else if (snapshot.phase === 'gameOver') {
+      const winner =
+        snapshot.scores[0] >= game.winTarget
+          ? 1
+          : snapshot.scores[1] >= game.winTarget
+            ? 2
+            : null
+      useGameStore.setState({ phase: 'gameOver', winner })
     } else {
-      useGameStore.setState({ phase: state.phase })
+      useGameStore.setState({ phase: snapshot.phase })
     }
   }
 
-  const localId = useSessionStore.getState().localPlayerId
-  if (localId !== 1) {
-    paddleTargets.p1.x = state.p1.x
-    paddleTargets.p1.z = state.p1.z
-  }
-  if (localId !== 2) {
-    paddleTargets.p2.x = state.p2.x
-    paddleTargets.p2.z = state.p2.z
-  }
+  useRoundCountdownStore.getState().setStep(snapshot.countdownStep)
 
-  const step = state.countdownStep
-  useRoundCountdownStore.getState().setStep(step)
-
-  const flow = state.flow
+  const flow = snapshot.flow
   const puckFlow = usePuckFlowStore.getState().flow
   if (flow !== puckFlow) {
     if (flow === 'held') usePuckFlowStore.getState().holdForFaceoff()
     else if (flow === 'play') usePuckFlowStore.getState().resetFlow()
+    else if (flow === 'inChute') {
+      /* visual chute driven by phase goal on client */
+    }
   }
-}
-
-function applyNetGoal(scorer: 1 | 2) {
-  const role = useOnlineStore.getState().role
-  if (role !== 2) return
-  const phase = useGameStore.getState().phase
-  if (phase !== 'playing') return
-  useGameStore.getState().onGoal(scorer)
-}
-
-export function handleRelayedInput(msg: { seq: number; px: number; pz: number }) {
-  if (msg.seq <= onlineRemoteInput.seq) return
-  onlineRemoteInput.seq = msg.seq
-  onlineRemoteInput.px = msg.px
-  onlineRemoteInput.pz = msg.pz
-  paddleTargets.p2.x = msg.px
-  paddleTargets.p2.z = msg.pz
 }
 
 export function cleanupOnlineSession() {

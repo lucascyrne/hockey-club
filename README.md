@@ -25,7 +25,7 @@ O menu exibe um **hero 3D** ao fundo: partida simulada **CPU × CPU** com gols e
 |------|-----------|
 | **vs CPU** | Câmera atrás do seu gol (+X); CPU defende o gol oposto |
 | **Dois jogadores** | Tela dividida (esq. = P1, dir. = P2); câmera atrás do gol de cada lado |
-| **Online** | Em breve (mesma câmera atrás do gol do jogador local) |
+| **Online** | 1v1 por código de sala · servidor autoritativo 60 Hz · ver [`docs/09-online-multiplayer.md`](docs/09-online-multiplayer.md) |
 
 ## Controles
 

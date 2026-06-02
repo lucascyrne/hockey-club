@@ -1,11 +1,15 @@
 import { createServer } from 'node:http'
 import { WebSocketServer, type WebSocket } from 'ws'
+import { decodeWireC2S, encodeWire } from '../../shared/protocolCodec.js'
 import {
   MAX_MSG_BYTES,
-  parseC2S,
+  normalizeCode,
+  PHYSICS_TIMESTEP,
   type C2S,
   type S2C,
 } from '../../shared/protocol.js'
+import { MatchSession } from './sim/MatchSession.js'
+import { initRapier } from './sim/rapierInit.js'
 import {
   broadcastRoom,
   createRoom,
@@ -13,13 +17,17 @@ import {
   getPeer,
   getRoomForSocket,
   joinRoom,
-  normalizeCode,
+  type Room,
+  rematchReadyFlags,
   removePeer,
-  sendJson,
+  sendBinary,
+  stopMatchTick,
   touchRoom,
 } from './rooms.js'
 
 const PORT = Number(process.env.PORT ?? 8787)
+const TICK_MS = Math.round(PHYSICS_TIMESTEP * 1000)
+
 function normalizeOriginUrl(s: string): string {
   const t = s.trim()
   return t.endsWith('/') ? t.slice(0, -1) : t
@@ -31,8 +39,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
   .filter(Boolean)
 
 const rateWindow = new Map<WebSocket, { count: number; resetAt: number }>()
-/** Host + guest enviam ~50 msg/s em TICK_MS=20; margem para ping/ready. */
-const MAX_MSG_PER_SEC = 60
+const MAX_MSG_PER_SEC = 120
 
 function isOriginAllowed(origin: string | undefined): boolean {
   if (!origin) return true
@@ -54,17 +61,46 @@ function checkRate(ws: WebSocket): boolean {
 }
 
 function replyError(ws: WebSocket, code: string) {
-  const msg: S2C = { t: 'error', code }
-  sendJson(ws, msg)
+  sendBinary(ws, encodeWire({ t: 'error', code }))
 }
 
-function handleMessage(ws: WebSocket, raw: Buffer | string) {
+function ensureTickTimer(room: Room) {
+  if (room.tickTimer) return
+  room.tickTimer = setInterval(() => {
+    const session = room.match
+    if (!session) return
+    const snapshot = session.advance()
+    broadcastRoom(room, encodeWire({ t: 'snapshot', snapshot }))
+    const scorer = session.consumeGoalEvent()
+    if (scorer !== null) {
+      broadcastRoom(room, encodeWire({ t: 'goal', scorer }))
+    }
+  }, TICK_MS)
+}
+
+function startMatchLoop(room: Room) {
+  if (!room.winTarget || room.match) return
+  room.rematchReady.clear()
+  room.match = new MatchSession(room.winTarget)
+  ensureTickTimer(room)
+}
+
+function restartMatchSession(room: Room) {
+  if (!room.winTarget || !room.guest) return
+  if (room.match) {
+    room.match.dispose()
+  }
+  room.rematchReady.clear()
+  room.match = new MatchSession(room.winTarget)
+  ensureTickTimer(room)
+  broadcastRoom(room, encodeWire({ t: 'match', winTarget: room.winTarget }))
+}
+
+function handleMessage(ws: WebSocket, raw: Buffer) {
   if (!checkRate(ws)) return
+  if (raw.byteLength > MAX_MSG_BYTES) return
 
-  const text = typeof raw === 'string' ? raw : raw.toString('utf8')
-  if (text.length > MAX_MSG_BYTES) return
-
-  const msg = parseC2S(text)
+  const msg = decodeWireC2S(raw)
   if (!msg) return
 
   switch (msg.t) {
@@ -75,13 +111,12 @@ function handleMessage(ws: WebSocket, raw: Buffer | string) {
       handleJoin(ws, msg.code)
       break
     case 'ping':
-      sendJson(ws, { t: 'pong', ts: msg.ts })
+      sendBinary(ws, encodeWire({ t: 'pong', ts: msg.ts }))
       break
     case 'ready':
     case 'start':
     case 'input':
-    case 'state':
-    case 'goal':
+    case 'rematch':
     case 'leave':
       handleInRoom(ws, msg)
       break
@@ -96,8 +131,7 @@ function handleCreate(ws: WebSocket) {
     return
   }
   const room = createRoom(ws)
-  const out: S2C = { t: 'room', code: room.code, role: 1 }
-  sendJson(ws, out)
+  sendBinary(ws, encodeWire({ t: 'room', code: room.code, role: 1 }))
 }
 
 function handleJoin(ws: WebSocket, rawCode: string) {
@@ -120,8 +154,8 @@ function handleJoin(ws: WebSocket, rawCode: string) {
     return
   }
   touchRoom(result)
-  sendJson(ws, { t: 'room', code: result.code, role: 2 })
-  sendJson(result.host.ws, { t: 'peer', status: 'joined' })
+  sendBinary(ws, encodeWire({ t: 'room', code: result.code, role: 2 }))
+  sendBinary(result.host.ws, encodeWire({ t: 'peer', status: 'joined' }))
 }
 
 function handleInRoom(ws: WebSocket, msg: C2S) {
@@ -136,8 +170,9 @@ function handleInRoom(ws: WebSocket, msg: C2S) {
 
   if (msg.t === 'leave') {
     const other = getOtherPeer(room, ws)
+    stopMatchTick(room)
     removePeer(ws)
-    if (other) sendJson(other.ws, { t: 'peer', status: 'left' })
+    if (other) sendBinary(other.ws, encodeWire({ t: 'peer', status: 'left' }))
     try {
       ws.close()
     } catch {
@@ -148,35 +183,34 @@ function handleInRoom(ws: WebSocket, msg: C2S) {
 
   if (msg.t === 'start') {
     if (peer.role !== 1) return
+    if (!room.guest) return
     room.matchStarted = true
     room.winTarget = msg.winTarget
     const out: S2C = { t: 'match', winTarget: msg.winTarget }
-    broadcastRoom(room, out)
+    broadcastRoom(room, encodeWire(out))
+    startMatchLoop(room)
     return
   }
 
-  if (msg.t === 'ready') {
-    return
-  }
-
-  if (msg.t === 'state' || msg.t === 'goal') {
-    if (peer.role !== 1) return
-    const other = getOtherPeer(room, ws)
-    if (!other) return
-    sendJson(other.ws, msg as S2C)
-    return
-  }
+  if (msg.t === 'ready') return
 
   if (msg.t === 'input') {
-    if (peer.role !== 2) return
-    const other = getOtherPeer(room, ws)
-    if (!other) return
-    sendJson(other.ws, {
-      t: 'remoteInput',
-      seq: msg.seq,
-      px: msg.px,
-      pz: msg.pz,
-    })
+    if (!room.match) return
+    if (!Number.isFinite(msg.px) || !Number.isFinite(msg.pz)) return
+    room.match.setInput(peer.role, msg.px, msg.pz)
+    return
+  }
+
+  if (msg.t === 'rematch') {
+    if (!room.match || !room.guest) return
+    if (room.match.getPhase() !== 'gameOver') return
+    room.rematchReady.add(peer.role)
+    const ready = rematchReadyFlags(room)
+    broadcastRoom(room, encodeWire({ t: 'rematch', ready }))
+    if (ready[0] && ready[1]) {
+      restartMatchSession(room)
+    }
+    return
   }
 }
 
@@ -199,17 +233,33 @@ wss.on('connection', (ws, req) => {
     return
   }
 
-  ws.on('message', (data: Buffer | string) => handleMessage(ws, data))
+  ws.on('message', (data: Buffer) => {
+    if (Buffer.isBuffer(data)) handleMessage(ws, data)
+    else handleMessage(ws, Buffer.from(data))
+  })
   ws.on('close', () => {
     rateWindow.delete(ws)
     const room = getRoomForSocket(ws)
     if (!room) return
     const other = getOtherPeer(room, ws)
+    stopMatchTick(room)
     removePeer(ws)
-    if (other) sendJson(other.ws, { t: 'peer', status: 'left' })
+    if (other) sendBinary(other.ws, encodeWire({ t: 'peer', status: 'left' }))
   })
 })
 
+await initRapier()
+
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `Porta ${PORT} em uso. Feche o outro processo (ex.: outro \`pnpm run dev\` no server) ou use PORT=8788 pnpm run dev`,
+    )
+    process.exit(1)
+  }
+  throw err
+})
+
 httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`hockey-table ws server on 0.0.0.0:${PORT} (path /ws)`)
+  console.log(`hockey-table ws server on 0.0.0.0:${PORT} (path /ws, authoritative sim)`)
 })

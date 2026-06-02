@@ -6,7 +6,7 @@
 |------|----------------------------|--------------------------|-----------------------------------|
 | vs CPU | Tela cheia, toque em toda a mesa | Idem | Idem |
 | 2P local | Split **horizontal** (P1 embaixo, P2 em cima) | Split **horizontal** (igual mobile) | Split **lateral** (P1 esq., P2 dir.) |
-| Online | Stub | — | — |
+| Online | Igual vs CPU (câmera atrás do gol local) | Idem | Idem |
 
 O eixo 2P usa `(pointer: coarse)` em [`resolveSplitAxis`](../src/lib/splitViewport.ts): tablets em landscape mantêm split horizontal e placar central, não o layout lateral do desktop.
 
@@ -21,7 +21,7 @@ Em partidas (`GoalCamera`), quando `layoutStore.isMobile` é verdadeiro, o perfi
 
 No **2P**, [`ArenaBackdrop`](../src/components/canvas/ArenaBackdrop.tsx) expande chão/paredes para evitar tarja preta no limite do fundo nos viewports split.
 
-No **2P**, P1 e P2 usam a mesma lógica espelhada (`buildGoalCameraConfig` com `sign`); **não** há `viewFlip` extra.
+No **2P portrait** (split horizontal, altura > largura), a metade do P2 é renderizada com roll 180° e o toque usa NDC invertido (`shouldFlipP2View`), para jogar frente a frente no mesmo telemóvel.
 
 ## HUD em partida
 

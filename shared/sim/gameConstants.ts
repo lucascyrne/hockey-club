@@ -1,0 +1,9 @@
+export const GOAL_WIDTH = 0.35
+export const GOAL_HALF_WIDTH = GOAL_WIDTH / 2
+export const TABLE_CORNER_CHAMFER = 0.08
+export const PUCK_CHUTE_MS = 400
+export const ROUND_COUNTDOWN_STEP_MS = 420
+export const ROUND_COUNTDOWN_PUCK_MS = 620
+export const FACEOFF_SPEED_MIN = 2
+export const FACEOFF_SPEED_MAX = 3.2
+export const FACEOFF_ANGLE_JITTER = 0.35

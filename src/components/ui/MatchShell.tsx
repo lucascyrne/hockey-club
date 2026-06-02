@@ -1,14 +1,12 @@
 import { GameCanvas } from '../canvas/GameCanvas'
-import { OnlineBridge } from '../game/OnlineBridge'
-import { useOnlineSync } from '../../hooks/useOnlineSync'
+import { useOnlineMatch } from '../../hooks/useOnlineMatch'
 import { InGameHUD } from './InGameHUD'
 
 export function MatchShell() {
-  useOnlineSync()
+  useOnlineMatch()
 
   return (
     <div className="match-shell">
-      <OnlineBridge />
       <div className="match-shell__canvas-wrap">
         <GameCanvas />
       </div>

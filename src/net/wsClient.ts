@@ -1,5 +1,5 @@
 import type { C2S, S2C } from '../../shared/protocol'
-import { parseS2C } from '../../shared/protocol'
+import { decodeWireS2C, encodeWire } from '../../shared/protocolCodec'
 import { getWsUrl } from '../lib/wsUrl'
 
 export type WsClientHandlers = {
@@ -13,7 +13,6 @@ let socket: WebSocket | null = null
 let activeHandlers: WsClientHandlers = {}
 let intentionalDisconnect = false
 
-/** Listeners adicionais de mensagem (ping, etc.) sem sobrescrever o handler principal. */
 const extraMessageListeners = new Set<(msg: S2C) => void>()
 
 export function addMessageListener(fn: (msg: S2C) => void) {
@@ -49,6 +48,7 @@ export function connectWs(handlers: WsClientHandlers): boolean {
 
   intentionalDisconnect = false
   socket = new WebSocket(url)
+  socket.binaryType = 'arraybuffer'
 
   socket.onopen = () => activeHandlers.onOpen?.()
   socket.onclose = () => {
@@ -57,7 +57,14 @@ export function connectWs(handlers: WsClientHandlers): boolean {
   }
   socket.onerror = () => activeHandlers.onError?.()
   socket.onmessage = (ev) => {
-    const msg = parseS2C(String(ev.data))
+    const raw =
+      ev.data instanceof ArrayBuffer
+        ? new Uint8Array(ev.data)
+        : typeof ev.data === 'string'
+          ? new TextEncoder().encode(ev.data)
+          : null
+    if (!raw) return
+    const msg = decodeWireS2C(raw)
     if (!msg) return
     activeHandlers.onMessage?.(msg)
     for (const fn of extraMessageListeners) fn(msg)
@@ -79,5 +86,5 @@ export function disconnectWs() {
 
 export function sendC2S(msg: C2S) {
   if (!socket || socket.readyState !== WebSocket.OPEN) return
-  socket.send(JSON.stringify(msg))
+  socket.send(encodeWire(msg))
 }

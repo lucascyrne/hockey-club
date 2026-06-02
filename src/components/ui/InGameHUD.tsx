@@ -3,7 +3,9 @@ import { useTranslation } from '../../i18n'
 import { useGameLayout } from '../../hooks/useGameLayout'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useGameStore } from '../../stores/gameStore'
+import { requestOnlineRematch } from '../../systems/requestOnlineRematch'
 import { restartCurrentMatch } from '../../systems/restartMatch'
+import { useOnlineStore } from '../../stores/onlineStore'
 import { useArenaFx } from '../../hooks/useArenaFx'
 import { useMatchHudMenu } from '../../hooks/useMatchHudMenu'
 import { FpsCounter } from './FpsCounter'
@@ -29,6 +31,8 @@ export function InGameHUD() {
   const winner = useGameStore((s) => s.winner)
   const [showHint, setShowHint] = useState(false)
   const { isGoalFlashing } = useArenaFx()
+  const localRematchReady = useOnlineStore((s) => s.localRematchReady)
+  const peerRematchReady = useOnlineStore((s) => s.peerRematchReady)
 
   const p2Name = matchMode === 'vsCpu' ? 'CPU' : matchMode === 'online' ? 'P2' : 'P2'
   const is2p = matchMode === 'local2p'
@@ -59,7 +63,7 @@ export function InGameHUD() {
   }
 
   const hint = isOnline
-    ? t.hud.hintVsCpu
+    ? t.hud.hintOnline
     : matchMode === 'vsCpu'
       ? t.hud.hintVsCpu
       : splitHorizontal
@@ -106,10 +110,16 @@ export function InGameHUD() {
             <p className={`game-hud__banner ${bannerClass}`}>{banner}</p>
             {phase === 'gameOver' && (
               <div className="game-hud__overlay-actions">
+                {isOnline && localRematchReady && !peerRematchReady && (
+                  <p className="game-hud__rematch-wait">{t.hud.waitingRematch}</p>
+                )}
                 <button
                   type="button"
                   className="game-hud__btn game-hud__btn--primary"
-                  onClick={restartCurrentMatch}
+                  disabled={isOnline && localRematchReady}
+                  onClick={() =>
+                    isOnline ? requestOnlineRematch() : restartCurrentMatch()
+                  }
                 >
                   {t.hud.restart}
                 </button>

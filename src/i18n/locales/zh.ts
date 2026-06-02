@@ -67,6 +67,8 @@ export const zh: Translations = {
     help: '帮助',
     language: '语言',
     restart: '再来一局',
+    waitingRematch: '等待对手…',
+    hintOnline: '触屏或鼠标控制球桌 · 可选 WASD',
     countdownPuck: '开球',
     goal: '进球！',
     victory: '胜利！',

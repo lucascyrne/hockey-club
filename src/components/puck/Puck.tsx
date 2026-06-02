@@ -51,15 +51,8 @@ import { detectGoal } from '../../systems/rules'
 import { getCpuProfile } from '../../lib/cpuDifficulty'
 import { getMaxPuckSpeed, getPuckLinearDamping } from '../../lib/puckFeel'
 import { useSettingsStore } from '../../stores/settingsStore'
-import {
-  isOnlineGuest,
-  isOnlineHost,
-} from '../../stores/sessionStore'
-import { broadcastGoal } from '../../hooks/useOnlineSync'
-import {
-  onlineGuestPuck,
-  stepGuestPuckInterpolation,
-} from '../../lib/onlineNetState'
+import { isOnlineMode } from '../../stores/sessionStore'
+import { netPuck } from '../../lib/onlineNetState'
 
 const PUCK_HALF_HEIGHT = PUCK_HEIGHT / 2
 const HIT_COOLDOWN_MS = 70
@@ -200,6 +193,7 @@ export function Puck() {
   }, [])
 
   const handleCollisionEnter = (payload: CollisionEnterPayload) => {
+    if (isOnlineMode()) return
     const phase = useGameStore.getState().phase
     if (usePuckFlowStore.getState().flow !== 'play' || phase !== 'playing') return
 
@@ -270,11 +264,15 @@ export function Puck() {
     const body = bodyRef.current
     if (!body) return
 
-    if (isOnlineGuest()) {
-      const s = onlineGuestPuck.current
-      const y = body.translation().y
-      body.setTranslation({ x: s.x, y, z: s.z }, true)
+    if (isOnlineMode()) {
+      const s = netPuck.current
+      body.setNextKinematicTranslation({
+        x: s.x,
+        y: PUCK_SPAWN[1],
+        z: s.z,
+      })
       body.setLinvel({ x: s.vx, y: 0, z: s.vz }, true)
+      setPuckSample(s)
       return
     }
 
@@ -289,24 +287,7 @@ export function Puck() {
     const body = bodyRef.current
     if (!body) return
 
-    if (isOnlineGuest()) {
-      const phase = useGameStore.getState().phase
-      const flow = usePuckFlowStore.getState().flow
-      const s = onlineGuestPuck.current
-
-      if (phase === 'playing' && flow === 'play') {
-        runPuckPaddleSafety(body)
-        const pos = body.translation()
-        const v = body.linvel()
-        s.x = pos.x
-        s.z = pos.z
-        s.vx = v.x
-        s.vz = v.z
-      }
-
-      setPuckSample(s)
-      return
-    }
+    if (isOnlineMode()) return
 
     const phase = useGameStore.getState().phase
     const flow = usePuckFlowStore.getState().flow
@@ -368,7 +349,7 @@ export function Puck() {
           triggerFaceoff(getLateralFaceoffSpawn())
           return
         }
-        if (isOnlineHost()) broadcastGoal(scorer)
+        if (isOnlineMode()) return
         if (useGameStore.getState().phase === 'gameOver') return
         const { from, to } = computeChuteTarget(scorer, pos.x, pos.y, pos.z)
         usePuckFlowStore.getState().startChute(scorer, from, to)
@@ -381,8 +362,11 @@ export function Puck() {
     }
   })
 
-  useFrame((_state, delta) => {
-    if (isOnlineGuest()) stepGuestPuckInterpolation(delta)
+  const online = isOnlineMode()
+  const flow = usePuckFlowStore((s) => s.flow)
+
+  useFrame(() => {
+    if (online) return
 
     const body = bodyRef.current
     if (!body) return
@@ -391,20 +375,19 @@ export function Puck() {
     body.setLinearDamping(getPuckLinearDamping(airLevel))
 
     const phase = useGameStore.getState().phase
-    const flow = usePuckFlowStore.getState().flow
-    if (phase === 'gameOver' || flow !== 'play') return
+    const puckFlow = usePuckFlowStore.getState().flow
+    if (phase === 'gameOver' || puckFlow !== 'play') return
 
     clampPuckVelocity(body, getMaxPuckSpeed(airLevel))
   })
 
-  const flow = usePuckFlowStore((s) => s.flow)
-  const colliderSensor = flow !== 'play'
+  const colliderSensor = online || flow !== 'play'
 
   return (
     <RigidBody
       ref={bodyRef}
       name="Puck"
-      type="dynamic"
+      type={online ? 'kinematicPosition' : 'dynamic'}
       colliders={false}
       canSleep={false}
       ccd

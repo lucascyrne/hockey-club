@@ -67,6 +67,8 @@ export const pt: Translations = {
     help: 'Dúvidas',
     language: 'Idioma',
     restart: 'Recomeçar',
+    waitingRematch: 'Aguardando oponente…',
+    hintOnline: 'Toque ou mouse na mesa · WASD opcional',
     countdownPuck: 'DISCO!',
     goal: 'GOL!',
     victory: 'VITÓRIA!',

@@ -1,68 +1,164 @@
-import type { PuckSnapshot, StatePayload } from '../../shared/protocol'
+import type { PuckSnapshot, SnapshotPayload, Vec2 } from '../../shared/protocol'
+import { PHYSICS_TIMESTEP } from '../../shared/protocol'
+import { PADDLE_SPAWN } from '../../shared/sim/paddleConstants'
 
-/** Estado de rede em refs (sem re-render). */
+export const TICK_MS = PHYSICS_TIMESTEP * 1000
+const MAX_HISTORY = 32
+const MAX_EXTRAP_TICKS = 2
+const MAX_DELAY_TICKS = 4
 
-export const onlineGuestPuck = {
+export const netPuck = {
   current: { x: 0, z: 0, vx: 0, vz: 0 } as PuckSnapshot,
-  target: { x: 0, z: 0, vx: 0, vz: 0 } as PuckSnapshot,
-  lastSeq: 0,
 }
 
-export const onlineRemoteInput = {
-  px: 0,
-  pz: 0,
-  seq: 0,
+export const netPaddle = {
+  p1: { x: 0, z: 0 } as Vec2,
+  p2: { x: 0, z: 0 } as Vec2,
 }
 
-type TimedPuckSnapshot = PuckSnapshot & { at: number }
+type TimedPuck = PuckSnapshot & { tick: number }
+type TimedVec = Vec2 & { tick: number }
 
-/** Histórico de snapshots para interpolação temporal (guest). */
-const puckHistory: TimedPuckSnapshot[] = []
-const MAX_HISTORY = 12
+const puckHistory: TimedPuck[] = []
+const p1History: TimedVec[] = []
+const p2History: TimedVec[] = []
 
-/**
- * Atraso de renderização em relação ao snapshot mais recente.
- * Compensa RTT + jitter; disco segue trajetória suave entre estados do host.
- */
-const INTERP_DELAY_MS = 80
+let latestTick = 0
+let interpDelayMs = TICK_MS
+let lastSnapshot: SnapshotPayload | null = null
+let lastSnapshotArrival = 0
 
-/** Só faz snap se a conexão parar e o erro for grande (stall). */
-const STALL_SNAP_MS = 250
-const STALL_SNAP_DIST = 0.55
-
-let lastState: StatePayload | null = null
-
-export function applyGuestState(state: StatePayload) {
-  if (state.seq <= onlineGuestPuck.lastSeq) return
-  onlineGuestPuck.lastSeq = state.seq
-  onlineGuestPuck.target = { ...state.puck }
-  const at = performance.now()
-  puckHistory.push({ ...state.puck, at })
-  if (puckHistory.length > MAX_HISTORY) puckHistory.shift()
-  lastState = state
+function seedSpawn() {
+  netPaddle.p1.x = PADDLE_SPAWN.p1.x
+  netPaddle.p1.z = PADDLE_SPAWN.p1.z
+  netPaddle.p2.x = PADDLE_SPAWN.p2.x
+  netPaddle.p2.z = PADDLE_SPAWN.p2.z
+  netPuck.current = { x: 0, z: 0, vx: 0, vz: 0 }
 }
 
-export function getLastGuestState() {
-  return lastState
+export function setNetInterpDelayMs(ms: number) {
+  interpDelayMs = Math.max(0, Math.min(120, ms))
+}
+
+function delayTicks() {
+  if (interpDelayMs <= TICK_MS) return 0
+  return Math.max(1, Math.min(MAX_DELAY_TICKS, Math.ceil(interpDelayMs / TICK_MS)))
+}
+
+/** Transições que invalidam interpolação entre histórico antigo e novo estado. */
+export function isSnapshotDiscontinuity(
+  prev: SnapshotPayload,
+  next: SnapshotPayload,
+): boolean {
+  if (prev.flow === 'held' && next.flow === 'play') return true
+  if (prev.flow === 'play' && next.flow === 'held') return true
+  if (prev.phase === 'countdown' && next.phase === 'playing') return true
+  if (prev.countdownStep !== 'puck' && next.countdownStep === 'puck') return true
+  return false
+}
+
+function writeNetFromSnapshot(snapshot: SnapshotPayload) {
+  netPuck.current = { ...snapshot.puck }
+  netPaddle.p1 = { ...snapshot.p1 }
+  netPaddle.p2 = { ...snapshot.p2 }
+}
+
+/** Repõe histórico com um único tick — evita misturar held antigo com faceoff. */
+export function snapToLatest(snapshot: SnapshotPayload) {
+  puckHistory.length = 0
+  p1History.length = 0
+  p2History.length = 0
+
+  puckHistory.push({ ...snapshot.puck, tick: snapshot.tick })
+  p1History.push({ ...snapshot.p1, tick: snapshot.tick })
+  p2History.push({ ...snapshot.p2, tick: snapshot.tick })
+
+  latestTick = snapshot.tick
+  lastSnapshotArrival = performance.now()
+  writeNetFromSnapshot(snapshot)
+}
+
+function pushHistory(snapshot: SnapshotPayload) {
+  puckHistory.push({ ...snapshot.puck, tick: snapshot.tick })
+  p1History.push({ ...snapshot.p1, tick: snapshot.tick })
+  p2History.push({ ...snapshot.p2, tick: snapshot.tick })
+
+  while (puckHistory.length > MAX_HISTORY) puckHistory.shift()
+  while (p1History.length > MAX_HISTORY) p1History.shift()
+  while (p2History.length > MAX_HISTORY) p2History.shift()
+
+  latestTick = Math.max(latestTick, snapshot.tick)
+  lastSnapshotArrival = performance.now()
+}
+
+export function applySnapshot(snapshot: SnapshotPayload) {
+  const prev = lastSnapshot
+  pushHistory(snapshot)
+
+  if (!prev || isSnapshotDiscontinuity(prev, snapshot)) {
+    snapToLatest(snapshot)
+  }
+
+  lastSnapshot = snapshot
 }
 
 export function resetOnlineNetState() {
-  onlineGuestPuck.lastSeq = 0
-  onlineGuestPuck.current = { x: 0, z: 0, vx: 0, vz: 0 }
-  onlineGuestPuck.target = { x: 0, z: 0, vx: 0, vz: 0 }
-  onlineRemoteInput.seq = 0
-  onlineRemoteInput.px = 0
-  onlineRemoteInput.pz = 0
   puckHistory.length = 0
-  lastState = null
+  p1History.length = 0
+  p2History.length = 0
+  latestTick = 0
+  lastSnapshot = null
+  lastSnapshotArrival = 0
+  interpDelayMs = TICK_MS
+  seedSpawn()
 }
 
-function clamp01(n: number) {
-  return Math.max(0, Math.min(1, n))
+function sampleByTick<T extends { tick: number }>(
+  history: T[],
+  renderTick: number,
+  blend: (a: T, b: T, u: number) => T,
+  extrapolate?: (last: T, tickDelta: number) => T,
+): T | null {
+  if (history.length === 0) return null
+  if (history.length === 1) return history[0]
+
+  let i = 0
+  while (i < history.length - 1 && history[i + 1].tick <= renderTick) i++
+
+  if (i >= history.length - 1) {
+    const last = history[history.length - 1]
+    const tickDelta = renderTick - last.tick
+    if (tickDelta > 0 && extrapolate) {
+      return extrapolate(last, Math.min(tickDelta, MAX_EXTRAP_TICKS))
+    }
+    return last
+  }
+
+  const a = history[i]
+  const b = history[i + 1]
+  const span = b.tick - a.tick
+  const u = span > 0 ? Math.max(0, Math.min(1, (renderTick - a.tick) / span)) : 0
+  return blend(a, b, u)
 }
 
-function lerpSnapshot(a: PuckSnapshot, b: PuckSnapshot, u: number): PuckSnapshot {
+/** Interpolação sub-frame entre os dois últimos snapshots (LAN, delay 0). */
+function sampleLatestPair<T extends { tick: number }>(
+  history: T[],
+  blend: (a: T, b: T, u: number) => T,
+): T | null {
+  if (history.length === 0) return null
+  if (history.length === 1) return history[0]
+
+  const a = history[history.length - 2]
+  const b = history[history.length - 1]
+  const elapsed = performance.now() - lastSnapshotArrival
+  const u = Math.max(0, Math.min(1, elapsed / TICK_MS))
+  return blend(a, b, u)
+}
+
+function blendPuck(a: TimedPuck, b: TimedPuck, u: number): TimedPuck {
   return {
+    tick: b.tick,
     x: a.x + (b.x - a.x) * u,
     z: a.z + (b.z - a.z) * u,
     vx: a.vx + (b.vx - a.vx) * u,
@@ -70,83 +166,67 @@ function lerpSnapshot(a: PuckSnapshot, b: PuckSnapshot, u: number): PuckSnapshot
   }
 }
 
-function samplePuckAtTime(renderTime: number): PuckSnapshot | null {
-  if (puckHistory.length === 0) return null
-  if (puckHistory.length === 1) return puckHistory[0]
-
-  let i = 0
-  while (i < puckHistory.length - 1 && puckHistory[i + 1].at <= renderTime) {
-    i += 1
+function extrapPuck(last: TimedPuck, tickDelta: number): TimedPuck {
+  const dt = tickDelta * PHYSICS_TIMESTEP
+  return {
+    ...last,
+    tick: last.tick + tickDelta,
+    x: last.x + last.vx * dt,
+    z: last.z + last.vz * dt,
+    vx: last.vx,
+    vz: last.vz,
   }
-
-  if (i >= puckHistory.length - 1) {
-    const last = puckHistory[puckHistory.length - 1]
-    const prev = puckHistory[puckHistory.length - 2]
-    const span = last.at - prev.at
-    if (span < 1) return last
-    const extra = clamp01((renderTime - last.at) / span)
-    const cap = 0.2
-    return {
-      x: last.x + (last.x - prev.x) * extra * cap,
-      z: last.z + (last.z - prev.z) * extra * cap,
-      vx: last.vx,
-      vz: last.vz,
-    }
-  }
-
-  const a = puckHistory[i]
-  const b = puckHistory[i + 1]
-  const span = b.at - a.at
-  const u = span > 1 ? clamp01((renderTime - a.at) / span) : 0
-  const pos = lerpSnapshot(a, b, u)
-  if (span > 1) {
-    const inv = 1000 / span
-    pos.vx = (b.x - a.x) * inv
-    pos.vz = (b.z - a.z) * inv
-  }
-  return pos
 }
 
-/** Fallback quando ainda não há histórico suficiente. */
-function stepGuestPuckFallback(delta: number) {
-  const c = onlineGuestPuck.current
-  const t = onlineGuestPuck.target
-  const alpha = 1 - Math.pow(0.008, delta)
-  c.x += (t.x - c.x) * alpha
-  c.z += (t.z - c.z) * alpha
-  c.vx += (t.vx - c.vx) * alpha
-  c.vz += (t.vz - c.vz) * alpha
+function blendVec(a: TimedVec, b: TimedVec, u: number): TimedVec {
+  return {
+    tick: b.tick,
+    x: a.x + (b.x - a.x) * u,
+    z: a.z + (b.z - a.z) * u,
+  }
 }
 
-/**
- * Interpola o disco do convidado entre snapshots do host (entity interpolation).
- * Evita snap a cada tick quando o disco se move rápido.
- */
-export function stepGuestPuckInterpolation(_delta: number) {
-  const c = onlineGuestPuck.current
-  const now = performance.now()
+function applyPuck(puck: TimedPuck) {
+  netPuck.current.x = puck.x
+  netPuck.current.z = puck.z
+  netPuck.current.vx = puck.vx
+  netPuck.current.vz = puck.vz
+}
 
-  if (puckHistory.length < 2) {
-    stepGuestPuckFallback(_delta)
+function applyPaddles(p1: TimedVec | null, p2: TimedVec | null) {
+  if (p1) {
+    netPaddle.p1.x = p1.x
+    netPaddle.p1.z = p1.z
+  }
+  if (p2) {
+    netPaddle.p2.x = p2.x
+    netPaddle.p2.z = p2.z
+  }
+}
+
+export function stepOnlineInterpolation() {
+  if (latestTick === 0) return
+
+  const delay = delayTicks()
+
+  if (delay === 0) {
+    const puck = sampleLatestPair(puckHistory, blendPuck)
+    if (puck) applyPuck(puck)
+    applyPaddles(
+      sampleLatestPair(p1History, blendVec),
+      sampleLatestPair(p2History, blendVec),
+    )
     return
   }
 
-  const renderTime = now - INTERP_DELAY_MS
-  const sampled = samplePuckAtTime(renderTime)
-  if (!sampled) return
+  const firstTick = puckHistory[0]?.tick ?? 1
+  const renderTick = Math.max(firstTick, latestTick - delay)
 
-  c.x = sampled.x
-  c.z = sampled.z
-  c.vx = sampled.vx
-  c.vz = sampled.vz
+  const puck = sampleByTick(puckHistory, renderTick, blendPuck, extrapPuck)
+  if (puck) applyPuck(puck)
 
-  const newest = puckHistory[puckHistory.length - 1]
-  const stallMs = now - newest.at
-  const err = Math.hypot(newest.x - c.x, newest.z - c.z)
-  if (stallMs > STALL_SNAP_MS && err > STALL_SNAP_DIST) {
-    c.x = newest.x
-    c.z = newest.z
-    c.vx = newest.vx
-    c.vz = newest.vz
-  }
+  applyPaddles(
+    sampleByTick(p1History, renderTick, blendVec),
+    sampleByTick(p2History, renderTick, blendVec),
+  )
 }

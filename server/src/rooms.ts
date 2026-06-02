@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import type { NetPlayerId, WinTarget } from '../../shared/protocol.js'
 import { ROOM_CODE_LEN } from '../../shared/protocol.js'
+import type { MatchSession } from './sim/MatchSession.js'
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 const ROOM_TTL_MS = 30 * 60 * 1000
@@ -18,6 +19,9 @@ export type Room = {
   lastActivityAt: number
   matchStarted: boolean
   winTarget: WinTarget | null
+  match: MatchSession | null
+  tickTimer: ReturnType<typeof setInterval> | null
+  rematchReady: Set<NetPlayerId>
 }
 
 const roomsByCode = new Map<string, Room>()
@@ -50,6 +54,9 @@ export function createRoom(ws: WebSocket): Room {
     lastActivityAt: Date.now(),
     matchStarted: false,
     winTarget: null,
+    match: null,
+    tickTimer: null,
+    rematchReady: new Set(),
   }
   roomsByCode.set(code, room)
   roomBySocket.set(ws, room)
@@ -84,6 +91,7 @@ export function removePeer(ws: WebSocket) {
   roomBySocket.delete(ws)
 
   if (room.host.ws === ws) {
+    stopMatchTick(room)
     if (room.guest) {
       try {
         room.guest.ws.close()
@@ -99,14 +107,32 @@ export function removePeer(ws: WebSocket) {
     room.guest = null
     room.matchStarted = false
     room.winTarget = null
+    stopMatchTick(room)
     room.lastActivityAt = Date.now()
   }
 }
 
 export function destroyRoom(room: Room) {
+  stopMatchTick(room)
   roomsByCode.delete(room.code)
   roomBySocket.delete(room.host.ws)
   if (room.guest) roomBySocket.delete(room.guest.ws)
+}
+
+export function stopMatchTick(room: Room) {
+  if (room.tickTimer) {
+    clearInterval(room.tickTimer)
+    room.tickTimer = null
+  }
+  if (room.match) {
+    room.match.dispose()
+    room.match = null
+  }
+  room.rematchReady.clear()
+}
+
+export function rematchReadyFlags(room: Room): [boolean, boolean] {
+  return [room.rematchReady.has(1), room.rematchReady.has(2)]
 }
 
 function purgeStaleRooms() {
@@ -130,15 +156,15 @@ function purgeStaleRooms() {
   }
 }
 
-export function sendJson(ws: WebSocket, msg: unknown) {
+export function sendBinary(ws: WebSocket, data: Uint8Array) {
   if (ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(msg))
+    ws.send(data)
   }
 }
 
-export function broadcastRoom(room: Room, msg: unknown, except?: WebSocket) {
-  if (room.host.ws !== except) sendJson(room.host.ws, msg)
-  if (room.guest && room.guest.ws !== except) sendJson(room.guest.ws, msg)
+export function broadcastRoom(room: Room, data: Uint8Array, except?: WebSocket) {
+  if (room.host.ws !== except) sendBinary(room.host.ws, data)
+  if (room.guest && room.guest.ws !== except) sendBinary(room.guest.ws, data)
 }
 
 export function getPeer(room: Room, ws: WebSocket): Peer | null {

@@ -9,6 +9,15 @@ export type ViewportRect = {
   h: number
 }
 
+/** 2P horizontal em portrait: metade do P2 virada 180° para jogadores frente a frente. */
+export function shouldFlipP2View(
+  width: number,
+  height: number,
+  axis: SplitAxis,
+): boolean {
+  return axis === 'horizontal' && height > width
+}
+
 /** Touch → horizontal (tablet/mobile); portrait → horizontal; landscape fino → lateral. */
 export function resolveSplitAxis(
   width: number,
@@ -76,24 +85,34 @@ export function pointerToNdc(
   rect: DOMRect,
   playerId: PlayerId,
   axis: SplitAxis,
+  flipP2View = false,
 ): { x: number; y: number } {
   const localX = clientX - rect.left
   const localY = clientY - rect.top
 
+  let x: number
+  let y: number
+
   if (axis === 'lateral') {
     const halfW = rect.width / 2
     const vx = playerId === 1 ? localX : localX - halfW
-    return {
-      x: (vx / halfW) * 2 - 1,
-      y: -(localY / rect.height) * 2 + 1,
+    x = (vx / halfW) * 2 - 1
+    y = -(localY / rect.height) * 2 + 1
+  } else {
+    const halfH = rect.height / 2
+    const ndcX = (localX / rect.width) * 2 - 1
+    if (playerId === 1) {
+      const vy = localY - halfH
+      x = ndcX
+      y = -(vy / halfH) * 2 + 1
+    } else {
+      x = ndcX
+      y = -(localY / halfH) * 2 + 1
     }
   }
 
-  const halfH = rect.height / 2
-  const ndcX = (localX / rect.width) * 2 - 1
-  if (playerId === 1) {
-    const vy = localY - halfH
-    return { x: ndcX, y: -(vy / halfH) * 2 + 1 }
+  if (playerId === 2 && flipP2View) {
+    return { x: -x, y: -y }
   }
-  return { x: ndcX, y: -(localY / halfH) * 2 + 1 }
+  return { x, y }
 }

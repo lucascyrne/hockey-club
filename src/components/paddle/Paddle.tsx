@@ -5,6 +5,8 @@ import {
   type RapierRigidBody,
 } from '@react-three/rapier'
 import { useEffect, useRef } from 'react'
+import { netPaddle } from '../../lib/onlineNetState'
+import { isOnlineMode, useSessionStore } from '../../stores/sessionStore'
 import {
   PADDLE_HALF_HEIGHT,
   PADDLE_HEIGHT,
@@ -18,6 +20,7 @@ import { registerPaddlePose } from '../../lib/paddlePositionRegistry'
 import { stepPaddleMotion } from '../../lib/paddleMotion'
 import { PaddleVelocityTracker } from '../../lib/paddleVelocityTracker'
 import type { PlayerId } from '../../systems/bounds'
+import { usePuckFlowStore } from '../../stores/puckFlowStore'
 import { paddleMotionState } from '../../stores/paddleMotionState'
 import { paddleTargets } from '../../stores/paddleTargets'
 
@@ -112,7 +115,21 @@ export function Paddle({ playerId, color, emissive, spawn }: PaddleProps) {
     if (!body) return
 
     const dt = world.timestep > 0 ? world.timestep : 1 / 60
-    stepPaddleMotion(motion, target.x, target.z, playerId, dt)
+
+    if (isOnlineMode()) {
+      const localId = useSessionStore.getState().localPlayerId
+      const isLocal = playerId === localId
+
+      if (isLocal) {
+        stepPaddleMotion(motion, target.x, target.z, playerId, dt)
+      } else {
+        const pose = playerId === 1 ? netPaddle.p1 : netPaddle.p2
+        motion.x = pose.x
+        motion.z = pose.z
+      }
+    } else {
+      stepPaddleMotion(motion, target.x, target.z, playerId, dt)
+    }
 
     body.setNextKinematicTranslation({
       x: motion.x,
@@ -129,6 +146,9 @@ export function Paddle({ playerId, color, emissive, spawn }: PaddleProps) {
     })
   })
 
+  const flow = usePuckFlowStore((s) => s.flow)
+  const paddleSensor = isOnlineMode() && flow === 'play'
+
   return (
     <RigidBody
       ref={bodyRef}
@@ -142,6 +162,7 @@ export function Paddle({ playerId, color, emissive, spawn }: PaddleProps) {
         args={[PADDLE_RADIUS, PADDLE_HALF_HEIGHT, PADDLE_RADIUS]}
         friction={PADDLE_PHYSICS.friction}
         restitution={PADDLE_PHYSICS.restitution}
+        sensor={paddleSensor}
       />
       <PaddleMesh color={color} emissive={emissive} playerId={playerId} />
     </RigidBody>

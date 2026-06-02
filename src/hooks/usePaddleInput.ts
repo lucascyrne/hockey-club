@@ -10,7 +10,8 @@ import {
   pointerToNdc,
   pointerToNdcFullscreen,
 } from '../lib/pointerSession'
-import { getSplitAxis } from '../stores/layoutStore'
+import { shouldFlipP2View } from '../lib/splitViewport'
+import { getSplitAxis, useLayoutStore } from '../stores/layoutStore'
 import { cameraMode } from '../stores/cameraMode'
 import {
   isLocal2pMode,
@@ -125,8 +126,10 @@ export function usePaddleInput() {
       getGoalCamera(playerId) ?? (playerId === 1 ? defaultCamera : null)
     if (!cam) return
 
+    const { width, height } = useLayoutStore.getState()
+    const flipP2 = local2p && shouldFlipP2View(width, height, axis)
     const ndc = local2p
-      ? pointerToNdc(e.clientX, e.clientY, rect, playerId, axis)
+      ? pointerToNdc(e.clientX, e.clientY, rect, playerId, axis, flipP2)
       : pointerToNdcFullscreen(e.clientX, e.clientY, rect)
     pointerNdc.set(ndc.x, ndc.y)
     raycaster.setFromCamera(pointerNdc, cam)
@@ -176,7 +179,14 @@ export function usePaddleInput() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!GAME_KEYS.has(e.code)) return
       if (e.code.startsWith('Arrow') && isVsCpuMode() && !isOnlineMode()) return
-      if (e.code.startsWith('Arrow') && isOnlineMode() && useSessionStore.getState().localPlayerId !== 2) return
+      if (e.code.startsWith('Arrow') && isOnlineMode()) {
+        const lid = useSessionStore.getState().localPlayerId
+        if (lid !== 2) return
+      }
+      if (e.code.startsWith('Key') && isOnlineMode()) {
+        const lid = useSessionStore.getState().localPlayerId
+        if (lid !== 1) return
+      }
       if (e.code.startsWith('Arrow')) e.preventDefault()
       setKey(e.code, true)
     }
@@ -199,10 +209,12 @@ export function usePaddleInput() {
     const onPointerDown = (e: PointerEvent) => {
       if (!canProcessInput()) return
       if (IS_DEV && cameraMode.value === 'orbit') return
-      if (!isLocal2pMode()) return
+      if (!isLocal2pMode() && !isOnlineMode()) return
 
-      const rect = canvas.getBoundingClientRect()
-      session.assign(e.pointerId, e.clientX, e.clientY, rect, getSplitAxis())
+      if (isLocal2pMode()) {
+        const rect = canvas.getBoundingClientRect()
+        session.assign(e.pointerId, e.clientX, e.clientY, rect, getSplitAxis())
+      }
       canvas.setPointerCapture(e.pointerId)
       projectPointer(e)
     }

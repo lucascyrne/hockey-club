@@ -5,7 +5,7 @@
 1. **Menu inicial** — hero 3D em loop (CPU × CPU, sem input); CTAs por cima. Escolha: vs CPU, dois jogadores ou online (desabilitado). Ao sair do menu, a demo para e o `gameStore` é resetado.
 2. **vs CPU** — câmera fixa atrás do gol do P1 (+X); mouse/WASD; CPU no P2.
 3. **2P local** — split adaptativo: **horizontal** em portrait (P1 embaixo / P2 em cima, frente a frente) ou **lateral** em landscape (P1 esq. / P2 dir.); `SplitScreenRenderer` + multitouch (`PointerSession`); WASD/setas opcionais no desktop.
-4. **Online** (futuro) — mesma câmera que vs CPU, lado conforme `localPlayerId` da sessão.
+4. **Online** — servidor autoritativo; mesma câmera que vs CPU, lado conforme `localPlayerId`. Ver [`09-online-multiplayer.md`](./09-online-multiplayer.md).
 
 ## Dimensões e layout
 

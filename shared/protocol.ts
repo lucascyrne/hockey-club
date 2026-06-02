@@ -1,8 +1,9 @@
-/** Contrato partilhado cliente ↔ servidor (JSON). */
+/** Contrato partilhado cliente ↔ servidor. */
 
 export type WinTarget = 3 | 5 | 7
 export type NetPlayerId = 1 | 2
 export type NetGamePhase = 'countdown' | 'playing' | 'goal' | 'gameOver'
+export type NetPuckFlow = 'play' | 'held' | 'inChute' | 'ejecting'
 
 export type Vec2 = { x: number; z: number }
 
@@ -13,15 +14,16 @@ export type PuckSnapshot = {
   vz: number
 }
 
-export type StatePayload = {
-  seq: number
+export type SnapshotPayload = {
+  serverTime: number
+  tick: number
   puck: PuckSnapshot
   p1: Vec2
   p2: Vec2
   phase: NetGamePhase
   scores: [number, number]
   countdownStep: 1 | 2 | 3 | 'puck' | null
-  flow: 'play' | 'held' | 'inChute' | 'ejecting'
+  flow: NetPuckFlow
 }
 
 export type C2S =
@@ -29,9 +31,8 @@ export type C2S =
   | { t: 'join'; code: string }
   | { t: 'ready' }
   | { t: 'start'; winTarget: WinTarget }
-  | { t: 'input'; seq: number; px: number; pz: number }
-  | { t: 'state'; state: StatePayload }
-  | { t: 'goal'; scorer: NetPlayerId }
+  | { t: 'input'; tick: number; px: number; pz: number }
+  | { t: 'rematch' }
   | { t: 'leave' }
   | { t: 'ping'; ts: number }
 
@@ -39,9 +40,9 @@ export type S2C =
   | { t: 'room'; code: string; role: NetPlayerId }
   | { t: 'peer'; status: 'joined' | 'left' }
   | { t: 'match'; winTarget: WinTarget }
-  | { t: 'state'; state: StatePayload }
-  | { t: 'remoteInput'; seq: number; px: number; pz: number }
+  | { t: 'snapshot'; snapshot: SnapshotPayload }
   | { t: 'goal'; scorer: NetPlayerId }
+  | { t: 'rematch'; ready: [boolean, boolean] }
   | { t: 'error'; code: string }
   | { t: 'pong'; ts: number }
 
@@ -54,26 +55,7 @@ export function normalizeCode(raw: string): string | null {
   if ([...code].some((c) => !CODE_CHARS.includes(c))) return null
   return code
 }
-/** Taxa de input/estado (~50 Hz). Servidor permite até 60 msg/s por socket. */
-export const TICK_MS = 20
+
+export const SERVER_TICK_HZ = 60
+export const PHYSICS_TIMESTEP = 1 / SERVER_TICK_HZ
 export const MAX_MSG_BYTES = 4096
-
-export function parseC2S(raw: string): C2S | null {
-  try {
-    const msg = JSON.parse(raw) as C2S
-    if (!msg || typeof msg !== 'object' || !('t' in msg)) return null
-    return msg
-  } catch {
-    return null
-  }
-}
-
-export function parseS2C(raw: string): S2C | null {
-  try {
-    const msg = JSON.parse(raw) as S2C
-    if (!msg || typeof msg !== 'object' || !('t' in msg)) return null
-    return msg
-  } catch {
-    return null
-  }
-}
