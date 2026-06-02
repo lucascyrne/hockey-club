@@ -199,7 +199,8 @@ function handleInRoom(ws: WebSocket, msg: C2S) {
 }
 
 const httpServer = createServer((req, res) => {
-  if (req.url === '/health') {
+  const path = req.url?.split('?')[0]
+  if (path === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ ok: true }))
     return
@@ -208,19 +209,20 @@ const httpServer = createServer((req, res) => {
   res.end()
 })
 
-const wss = new WebSocketServer({ server: httpServer, path: '/ws' })
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false })
 
-wss.on('connection', (ws, req) => {
+function onWsConnection(ws: WebSocket, req: import('http').IncomingMessage) {
   const origin = req.headers.origin
   const allowLanInDev = process.env.NODE_ENV !== 'production'
   if (!isOriginAllowed(origin, ALLOWED_ORIGINS, allowLanInDev)) {
+    console.warn('[ws] origin rejected:', origin ?? '(none)')
     ws.close(1008, 'origin_not_allowed')
     return
   }
 
-  ws.on('message', (data: Buffer) => {
-    if (Buffer.isBuffer(data)) handleMessage(ws, data)
-    else handleMessage(ws, Buffer.from(data))
+  ws.on('message', (data: Buffer | ArrayBuffer) => {
+    const raw = Buffer.isBuffer(data) ? data : Buffer.from(data)
+    handleMessage(ws, raw)
   })
   ws.on('close', () => {
     rateWindow.delete(ws)
@@ -230,6 +232,19 @@ wss.on('connection', (ws, req) => {
     stopMatchTick(room)
     removePeer(ws)
     if (other) sendBinary(other.ws, encodeWire({ t: 'peer', status: 'left' }))
+  })
+}
+
+wss.on('connection', onWsConnection)
+
+httpServer.on('upgrade', (req, socket, head) => {
+  const path = req.url?.split('?')[0]
+  if (path !== '/ws') {
+    socket.destroy()
+    return
+  }
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit('connection', ws, req)
   })
 })
 
@@ -246,5 +261,7 @@ httpServer.on('error', (err: NodeJS.ErrnoException) => {
 })
 
 httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`hockey-table ws server on 0.0.0.0:${PORT} (path /ws, authoritative sim)`)
+  console.log(
+    `hockey-table ws server on 0.0.0.0:${PORT} (path /ws, allowed=${ALLOWED_ORIGINS.join(',')})`,
+  )
 })

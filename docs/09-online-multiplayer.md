@@ -38,6 +38,8 @@ cd server && pnpm run dev
 
 `VITE_WS_URL` no cliente (ex. `ws://localhost:8787/ws`).
 
+**Produção (Vercel + Fly):** ver [`10-deploy-online.md`](./10-deploy-online.md).
+
 Se aparecer `EADDRINUSE` na porta 8787, já há um servidor a correr (sessão anterior). No Windows: `netstat -ano | findstr :8787` e `taskkill /PID <pid> /F`, ou use outra porta: `PORT=8788 pnpm run dev` (e ajuste `VITE_WS_URL`).
 
 ## Troubleshooting

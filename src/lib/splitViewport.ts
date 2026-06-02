@@ -81,29 +81,26 @@ export function pointerToNdc(
   rect: DOMRect,
   playerId: PlayerId,
   axis: SplitAxis,
-  flipP2View = false,
 ): { x: number; y: number } {
   const localX = clientX - rect.left
   const localY = clientY - rect.top
 
-  let x: number
-  let y: number
-
   if (axis === 'lateral') {
     const halfW = rect.width / 2
     const vx = playerId === 1 ? localX : localX - halfW
-    x = (vx / halfW) * 2 - 1
-    y = -(localY / rect.height) * 2 + 1
-  } else {
-    const halfH = rect.height / 2
-    const ndcX = (localX / rect.width) * 2 - 1
-    const vy = playerId === 1 ? localY - halfH : halfH - localY
-    x = ndcX
-    y = -(vy / halfH) * 2 + 1
+    return {
+      x: (vx / halfW) * 2 - 1,
+      y: -(localY / rect.height) * 2 + 1,
+    }
   }
 
-  if (playerId === 2 && flipP2View) {
-    return { x: -x, y: -y }
+  const halfH = rect.height / 2
+  const ndcX = (localX / rect.width) * 2 - 1
+  const vy = playerId === 1 ? localY - halfH : halfH - localY
+  // P2: vy já espelha frente/trás; −ndcX compensa o roll 180° na raycast (lateral Z).
+  const x = playerId === 2 ? -ndcX : ndcX
+  return {
+    x,
+    y: -(vy / halfH) * 2 + 1,
   }
-  return { x, y }
 }

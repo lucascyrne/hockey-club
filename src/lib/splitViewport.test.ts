@@ -8,19 +8,28 @@ describe('shouldFlipP2View', () => {
   })
 })
 
-describe('pointerToNdc flip P2', () => {
+describe('pointerToNdc', () => {
   const rect = { left: 0, top: 0, width: 400, height: 800 } as DOMRect
 
-  it('inverte NDC do P2 na metade superior quando flip ativo', () => {
-    const base = pointerToNdc(200, 100, rect, 2, 'horizontal', false)
-    const flipped = pointerToNdc(200, 100, rect, 2, 'horizontal', true)
-    expect(flipped.x).toBe(-base.x)
-    expect(flipped.y).toBe(-base.y)
+  it('P1 e P2 usam vy simétrico em relação à linha de split', () => {
+    const p1 = pointerToNdc(200, 600, rect, 1, 'horizontal')
+    const p2 = pointerToNdc(200, 200, rect, 2, 'horizontal')
+    expect(p1.y).toBeCloseTo(p2.y, 5)
   })
 
-  it('P1 e P2 usam vy simétrico em relação à linha de split', () => {
-    const p1 = pointerToNdc(200, 600, rect, 1, 'horizontal', false)
-    const p2 = pointerToNdc(200, 200, rect, 2, 'horizontal', false)
-    expect(p1.y).toBeCloseTo(p2.y, 5)
+  it('horizontal P2: espelha NDC-x de P1 (lateral alinhado ao roll da câmera)', () => {
+    const p1 = pointerToNdc(80, 600, rect, 1, 'horizontal')
+    const p2 = pointerToNdc(80, 200, rect, 2, 'horizontal')
+    expect(p2.x).toBeCloseTo(-p1.x, 5)
+  })
+
+  it('lateral: NDC x cresce para a direita em cada metade', () => {
+    const p1Left = pointerToNdc(50, 400, rect, 1, 'lateral')
+    const p1Right = pointerToNdc(150, 400, rect, 1, 'lateral')
+    expect(p1Right.x).toBeGreaterThan(p1Left.x)
+
+    const p2Left = pointerToNdc(250, 400, rect, 2, 'lateral')
+    const p2Right = pointerToNdc(350, 400, rect, 2, 'lateral')
+    expect(p2Right.x).toBeGreaterThan(p2Left.x)
   })
 })

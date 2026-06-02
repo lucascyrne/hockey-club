@@ -21,7 +21,7 @@ Em partidas (`GoalCamera`), quando `layoutStore.isMobile` é verdadeiro, o perfi
 
 No **2P**, [`ArenaBackdrop`](../src/components/canvas/ArenaBackdrop.tsx) expande chão/paredes para evitar tarja preta no limite do fundo nos viewports split.
 
-No **2P horizontal** (portrait e tablet landscape), a metade do P2 é renderizada com roll 180° e o toque usa NDC invertido (`shouldFlipP2View`); as setas espelham o eixo Z (`isP2HorizontalFlippedView`), para jogar frente a frente no mesmo dispositivo.
+No **2P horizontal** (portrait e tablet landscape), a metade do P2 usa roll 180° na câmera (`withP2GoalCameraRoll`) — o mesmo roll no render e no raycast do toque, para esquerda/direita alinhadas à vista.
 
 ## HUD em partida
 

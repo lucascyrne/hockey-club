@@ -13,7 +13,7 @@ function isPrivateOrLocalHost(hostname: string): boolean {
 }
 
 export function parseAllowedOrigins(env?: string): string[] {
-  const raw = env ?? 'http://localhost:5173'
+  const raw = env ?? process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173'
   if (raw.trim() === '*') return ['*']
   return raw.split(',').map(normalizeOriginUrl).filter(Boolean)
 }
@@ -29,6 +29,15 @@ export function isOriginAllowed(
   const normalized = normalizeOriginUrl(origin)
   if (allowed.some((o) => normalized === o || normalized.startsWith(o))) {
     return true
+  }
+
+  if (allowed.some((o) => o.includes('vercel.app'))) {
+    try {
+      const { hostname } = new URL(normalized)
+      if (hostname.endsWith('.vercel.app')) return true
+    } catch {
+      /* ignore */
+    }
   }
 
   if (!allowLanInDev) return false

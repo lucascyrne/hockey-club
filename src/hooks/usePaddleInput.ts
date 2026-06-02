@@ -10,8 +10,7 @@ import {
   pointerToNdc,
   pointerToNdcFullscreen,
 } from '../lib/pointerSession'
-import { isP2HorizontalFlippedView } from '../lib/paddleInputFrame'
-import { shouldFlipP2View } from '../lib/splitViewport'
+import { withP2GoalCameraRoll } from '../lib/p2CameraRoll'
 import { getSplitAxis } from '../stores/layoutStore'
 import { cameraMode } from '../stores/cameraMode'
 import {
@@ -72,13 +71,10 @@ function applyKeyboard(delta: number) {
   }
 
   if (isLocal2pMode() || (online && localId === 2)) {
-    const mirrorZ = isP2HorizontalFlippedView()
-    const zLeft = mirrorZ ? 1 : -1
-    const zRight = mirrorZ ? -1 : 1
     if (keys.up) nudgeTarget(2, 1, 0, delta)
     if (keys.down) nudgeTarget(2, -1, 0, delta)
-    if (keys.left) nudgeTarget(2, 0, zLeft, delta)
-    if (keys.right) nudgeTarget(2, 0, zRight, delta)
+    if (keys.left) nudgeTarget(2, 0, -1, delta)
+    if (keys.right) nudgeTarget(2, 0, 1, delta)
   }
 }
 
@@ -130,18 +126,25 @@ export function usePaddleInput() {
       getGoalCamera(playerId) ?? (playerId === 1 ? defaultCamera : null)
     if (!cam) return
 
-    const flipP2 = local2p && shouldFlipP2View(axis)
     const ndc = local2p
-      ? pointerToNdc(e.clientX, e.clientY, rect, playerId, axis, flipP2)
+      ? pointerToNdc(e.clientX, e.clientY, rect, playerId, axis)
       : pointerToNdcFullscreen(e.clientX, e.clientY, rect)
     pointerNdc.set(ndc.x, ndc.y)
-    raycaster.setFromCamera(pointerNdc, cam)
-    if (!raycaster.ray.intersectPlane(plane, hit)) return
 
-    const clamped = clampPaddlePosition(hit.x, hit.z, playerId)
-    const target = playerId === 1 ? paddleTargets.p1 : paddleTargets.p2
-    target.x = clamped.x
-    target.z = clamped.z
+    const applyHit = () => {
+      raycaster.setFromCamera(pointerNdc, cam)
+      if (!raycaster.ray.intersectPlane(plane, hit)) return
+      const clamped = clampPaddlePosition(hit.x, hit.z, playerId)
+      const target = playerId === 1 ? paddleTargets.p1 : paddleTargets.p2
+      target.x = clamped.x
+      target.z = clamped.z
+    }
+
+    if (local2p && playerId === 2) {
+      withP2GoalCameraRoll(cam, axis, applyHit)
+    } else {
+      applyHit()
+    }
   }
 
   useEffect(() => {
