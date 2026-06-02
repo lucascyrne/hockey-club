@@ -10,8 +10,9 @@ import {
   pointerToNdc,
   pointerToNdcFullscreen,
 } from '../lib/pointerSession'
+import { isP2HorizontalFlippedView } from '../lib/paddleInputFrame'
 import { shouldFlipP2View } from '../lib/splitViewport'
-import { getSplitAxis, useLayoutStore } from '../stores/layoutStore'
+import { getSplitAxis } from '../stores/layoutStore'
 import { cameraMode } from '../stores/cameraMode'
 import {
   isLocal2pMode,
@@ -71,10 +72,13 @@ function applyKeyboard(delta: number) {
   }
 
   if (isLocal2pMode() || (online && localId === 2)) {
+    const mirrorZ = isP2HorizontalFlippedView()
+    const zLeft = mirrorZ ? 1 : -1
+    const zRight = mirrorZ ? -1 : 1
     if (keys.up) nudgeTarget(2, 1, 0, delta)
     if (keys.down) nudgeTarget(2, -1, 0, delta)
-    if (keys.left) nudgeTarget(2, 0, -1, delta)
-    if (keys.right) nudgeTarget(2, 0, 1, delta)
+    if (keys.left) nudgeTarget(2, 0, zLeft, delta)
+    if (keys.right) nudgeTarget(2, 0, zRight, delta)
   }
 }
 
@@ -126,8 +130,7 @@ export function usePaddleInput() {
       getGoalCamera(playerId) ?? (playerId === 1 ? defaultCamera : null)
     if (!cam) return
 
-    const { width, height } = useLayoutStore.getState()
-    const flipP2 = local2p && shouldFlipP2View(width, height, axis)
+    const flipP2 = local2p && shouldFlipP2View(axis)
     const ndc = local2p
       ? pointerToNdc(e.clientX, e.clientY, rect, playerId, axis, flipP2)
       : pointerToNdcFullscreen(e.clientX, e.clientY, rect)

@@ -98,6 +98,7 @@ export type Translations = {
     join: string
     codeLabel: string
     codePlaceholder: string
+    connecting: string
     waitingPeer: string
     peerJoined: string
     startMatch: string
@@ -108,6 +109,7 @@ export type Translations = {
     connectError: string
     roomFull: string
     invalidCode: string
+    alreadyInRoom: string
     peerLeft: string
     youAreHost: string
     youAreGuest: string

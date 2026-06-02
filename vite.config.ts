@@ -77,6 +77,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true,
     headers: embedHeaders,
     proxy: {
       '/ws': {

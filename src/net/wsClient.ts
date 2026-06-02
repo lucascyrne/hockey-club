@@ -12,6 +12,7 @@ export type WsClientHandlers = {
 let socket: WebSocket | null = null
 let activeHandlers: WsClientHandlers = {}
 let intentionalDisconnect = false
+const pendingOutbound: C2S[] = []
 
 const extraMessageListeners = new Set<(msg: S2C) => void>()
 
@@ -28,6 +29,27 @@ export function isWsConnected() {
   return socket?.readyState === WebSocket.OPEN
 }
 
+function flushPending() {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return
+  while (pendingOutbound.length > 0) {
+    const msg = pendingOutbound.shift()!
+    socket.send(encodeWire(msg))
+  }
+}
+
+/** Envia quando o socket estiver OPEN; enfileira em CONNECTING. */
+export function sendC2S(msg: C2S): boolean {
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(encodeWire(msg))
+    return true
+  }
+  if (socket?.readyState === WebSocket.CONNECTING) {
+    pendingOutbound.push(msg)
+    return true
+  }
+  return false
+}
+
 export function connectWs(handlers: WsClientHandlers): boolean {
   const url = getWsUrl()
   if (!url) {
@@ -39,6 +61,7 @@ export function connectWs(handlers: WsClientHandlers): boolean {
 
   if (socket?.readyState === WebSocket.OPEN) {
     handlers.onOpen?.()
+    flushPending()
     return true
   }
 
@@ -50,8 +73,12 @@ export function connectWs(handlers: WsClientHandlers): boolean {
   socket = new WebSocket(url)
   socket.binaryType = 'arraybuffer'
 
-  socket.onopen = () => activeHandlers.onOpen?.()
+  socket.onopen = () => {
+    flushPending()
+    activeHandlers.onOpen?.()
+  }
   socket.onclose = () => {
+    pendingOutbound.length = 0
     if (!intentionalDisconnect) activeHandlers.onClose?.()
     if (socket?.readyState === WebSocket.CLOSED) socket = null
   }
@@ -74,6 +101,7 @@ export function connectWs(handlers: WsClientHandlers): boolean {
 }
 
 export function disconnectWs() {
+  pendingOutbound.length = 0
   if (!socket) return
   intentionalDisconnect = true
   const s = socket
@@ -82,9 +110,4 @@ export function disconnectWs() {
   if (s.readyState === WebSocket.OPEN || s.readyState === WebSocket.CONNECTING) {
     s.close()
   }
-}
-
-export function sendC2S(msg: C2S) {
-  if (!socket || socket.readyState !== WebSocket.OPEN) return
-  socket.send(encodeWire(msg))
 }

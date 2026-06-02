@@ -9,13 +9,9 @@ export type ViewportRect = {
   h: number
 }
 
-/** 2P horizontal em portrait: metade do P2 virada 180° para jogadores frente a frente. */
-export function shouldFlipP2View(
-  width: number,
-  height: number,
-  axis: SplitAxis,
-): boolean {
-  return axis === 'horizontal' && height > width
+/** 2P horizontal: metade do P2 virada 180° (retrato e tablet landscape). */
+export function shouldFlipP2View(axis: SplitAxis): boolean {
+  return axis === 'horizontal'
 }
 
 /** Touch → horizontal (tablet/mobile); portrait → horizontal; landscape fino → lateral. */
@@ -101,14 +97,9 @@ export function pointerToNdc(
   } else {
     const halfH = rect.height / 2
     const ndcX = (localX / rect.width) * 2 - 1
-    if (playerId === 1) {
-      const vy = localY - halfH
-      x = ndcX
-      y = -(vy / halfH) * 2 + 1
-    } else {
-      x = ndcX
-      y = -(localY / halfH) * 2 + 1
-    }
+    const vy = playerId === 1 ? localY - halfH : halfH - localY
+    x = ndcX
+    y = -(vy / halfH) * 2 + 1
   }
 
   if (playerId === 2 && flipP2View) {

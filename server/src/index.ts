@@ -10,6 +10,7 @@ import {
 } from '../../shared/protocol.js'
 import { MatchSession } from './sim/MatchSession.js'
 import { initRapier } from './sim/rapierInit.js'
+import { isOriginAllowed, parseAllowedOrigins } from '../../shared/net/originPolicy.js'
 import {
   broadcastRoom,
   createRoom,
@@ -27,27 +28,10 @@ import {
 
 const PORT = Number(process.env.PORT ?? 8787)
 const TICK_MS = Math.round(PHYSICS_TIMESTEP * 1000)
-
-function normalizeOriginUrl(s: string): string {
-  const t = s.trim()
-  return t.endsWith('/') ? t.slice(0, -1) : t
-}
-
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
-  .split(',')
-  .map(normalizeOriginUrl)
-  .filter(Boolean)
+const ALLOWED_ORIGINS = parseAllowedOrigins()
 
 const rateWindow = new Map<WebSocket, { count: number; resetAt: number }>()
 const MAX_MSG_PER_SEC = 120
-
-function isOriginAllowed(origin: string | undefined): boolean {
-  if (!origin) return true
-  const normalized = normalizeOriginUrl(origin)
-  return ALLOWED_ORIGINS.some(
-    (o) => normalized === o || normalized.startsWith(o),
-  )
-}
 
 function checkRate(ws: WebSocket): boolean {
   const now = Date.now()
@@ -228,7 +212,8 @@ const wss = new WebSocketServer({ server: httpServer, path: '/ws' })
 
 wss.on('connection', (ws, req) => {
   const origin = req.headers.origin
-  if (!isOriginAllowed(origin)) {
+  const allowLanInDev = process.env.NODE_ENV !== 'production'
+  if (!isOriginAllowed(origin, ALLOWED_ORIGINS, allowLanInDev)) {
     ws.close(1008, 'origin_not_allowed')
     return
   }

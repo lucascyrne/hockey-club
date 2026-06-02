@@ -35,10 +35,10 @@ export function OnlineLobby() {
   const wsMissing = !getWsUrl()
 
   useEffect(() => {
-    if (joinInput.length === ROOM_CODE_LEN && status === 'lobby' && !roomCode) {
+    if (joinInput.length === ROOM_CODE_LEN && !roomCode && !wsMissing) {
       joinRoom(joinInput)
     }
-  }, [joinInput, status, roomCode, joinRoom])
+  }, [joinInput, roomCode, joinRoom, wsMissing])
 
   const errorText =
     errorCode === 'ws_missing'
@@ -47,9 +47,13 @@ export function OnlineLobby() {
         ? t.online.roomFull
         : errorCode === 'invalid_code' || errorCode === 'room_not_found'
           ? t.online.invalidCode
-          : errorCode
-            ? t.online.connectError
-            : null
+          : errorCode === 'already_in_room'
+            ? t.online.alreadyInRoom
+            : errorCode
+              ? t.online.connectError
+              : null
+
+  const canJoin = joinInput.length === ROOM_CODE_LEN && !wsMissing
 
   const copyRoomCode = async () => {
     if (!roomCode) return
@@ -87,7 +91,7 @@ export function OnlineLobby() {
         {wsMissing && <p className="online-lobby__error">{t.online.wsMissing}</p>}
         {errorText && <p className="online-lobby__error">{errorText}</p>}
         {status === 'connecting' && (
-          <p className="online-lobby__hint">{t.online.waitingPeer}</p>
+          <p className="online-lobby__hint">{t.online.connecting}</p>
         )}
 
         {!roomCode && mode === 'pick' && !wsMissing && (
@@ -95,7 +99,7 @@ export function OnlineLobby() {
             <button
               type="button"
               className="mode-card mode-card--primary"
-              disabled={status !== 'lobby'}
+              disabled={wsMissing || status === 'connecting'}
               onClick={createRoom}
             >
               <span className="mode-card__label">{t.online.create}</span>
@@ -130,7 +134,7 @@ export function OnlineLobby() {
             <button
               type="button"
               className="mode-card mode-card--primary"
-              disabled={joinInput.length !== ROOM_CODE_LEN || status !== 'lobby'}
+              disabled={!canJoin}
               onClick={() => joinRoom(joinInput)}
             >
               {t.online.join}

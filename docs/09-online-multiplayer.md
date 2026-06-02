@@ -46,4 +46,5 @@ Se aparecer `EADDRINUSE` na porta 8787, já há um servidor a correr (sessão an
 |---------|-----------|
 | Disco a saltar | RTT alto; ping no HUD; servidor estável |
 | Desync de placar | Apenas servidor incrementa score |
-| Lobby não conecta | `VITE_WS_URL`, CORS `ALLOWED_ORIGINS` no servidor |
+| Lobby não conecta | `VITE_WS_URL`, `ALLOWED_ORIGINS` no servidor; em dev o servidor aceita origens LAN (`192.168.*`, etc.); use `npm run dev` com `host: true` e o colega abre `http://<teu-ip>:5173` |
+| Clicar “Entrar” sem efeito | Antes: botão desativado enquanto `connecting` ou `join` perdido se o WS ainda não estava aberto — corrigido com fila de mensagens e timeout de ligação |

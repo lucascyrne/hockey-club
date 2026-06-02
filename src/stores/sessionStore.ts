@@ -44,6 +44,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
   enterOnlineLobby: () => {
     cancelRoundCountdown()
+    cleanupOnlineSession()
     set({
       screen: 'onlineLobby',
       hudDrawerOpen: false,

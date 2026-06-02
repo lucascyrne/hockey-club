@@ -25,7 +25,7 @@ export function SplitScreenRenderer() {
     if (!cam1 || !cam2) return
 
     const axis = getSplitAxis()
-    const flipP2 = shouldFlipP2View(size.width, size.height, axis)
+    const flipP2 = shouldFlipP2View(axis)
     const { p1, p2 } = getSplitRects(size.width, size.height, axis)
 
     gl.setScissorTest(true)
