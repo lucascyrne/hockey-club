@@ -1,4 +1,4 @@
-import type { PerspectiveCamera } from 'three'
+import type { Camera } from 'three'
 import * as THREE from 'three'
 import type { SplitAxis } from './splitViewport'
 import { shouldFlipP2View } from './splitViewport'
@@ -9,7 +9,7 @@ const savedUp = new THREE.Vector3()
 
 /** Roll 180° na câmera do P2 (split horizontal) — igual ao render. */
 export function withP2GoalCameraRoll<T>(
-  cam: PerspectiveCamera,
+  cam: Camera,
   axis: SplitAxis,
   fn: () => T,
 ): T {

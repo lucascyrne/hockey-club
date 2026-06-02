@@ -122,8 +122,8 @@ export function usePaddleInput() {
 
     if (playerId === 1 && isP1KeyboardActive()) return
 
-    const cam =
-      getGoalCamera(playerId) ?? (playerId === 1 ? defaultCamera : null)
+    const goalCam = getGoalCamera(playerId)
+    const cam = goalCam ?? (playerId === 1 ? defaultCamera : null)
     if (!cam) return
 
     const ndc = local2p
@@ -140,8 +140,8 @@ export function usePaddleInput() {
       target.z = clamped.z
     }
 
-    if (local2p && playerId === 2) {
-      withP2GoalCameraRoll(cam, axis, applyHit)
+    if (local2p && playerId === 2 && goalCam) {
+      withP2GoalCameraRoll(goalCam, axis, applyHit)
     } else {
       applyHit()
     }
