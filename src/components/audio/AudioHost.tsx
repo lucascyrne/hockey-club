@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { setAudioVolumes, setBgm } from '../../audio/audioEngine'
+import { setAudioVolumes, setBgm, unlockAudio } from '../../audio/audioEngine'
 import { playGoalSfx, playWinSfx } from '../../audio/events'
 import { isMenuDemoActive } from '../../stores/menuDemoStore'
 import { useGameStore } from '../../stores/gameStore'
@@ -19,6 +19,16 @@ export function AudioHost() {
   useEffect(() => {
     setAudioVolumes({ masterVolume, sfxVolume, bgmVolume, muted })
   }, [masterVolume, sfxVolume, bgmVolume, muted])
+
+  useEffect(() => {
+    const onUnlock = () => unlockAudio()
+    document.addEventListener('pointerdown', onUnlock, { passive: true })
+    document.addEventListener('keydown', onUnlock)
+    return () => {
+      document.removeEventListener('pointerdown', onUnlock)
+      document.removeEventListener('keydown', onUnlock)
+    }
+  }, [])
 
   useEffect(() => {
     if (screen === 'menu') {

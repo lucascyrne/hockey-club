@@ -1,4 +1,4 @@
-import { Howl } from 'howler'
+import { Howl, Howler } from 'howler'
 import { BGM_CATALOG, SFX_CATALOG } from './catalog'
 import type { BgmTrack, SfxId } from './types'
 
@@ -13,8 +13,10 @@ const BGM_FADE_MS = 300
 const warned = new Set<string>()
 
 const sfxHowls = new Map<SfxId, Howl>()
+const bgmHowls = new Map<BgmTrack, Howl>()
 let bgmHowl: Howl | null = null
 let currentBgm: BgmTrack | null = null
+let audioUnlocked = false
 
 let volumes: AudioVolumes = {
   masterVolume: 1,
@@ -57,8 +59,11 @@ function getSfxHowl(id: SfxId): Howl | null {
 }
 
 function getBgmHowl(track: BgmTrack): Howl {
+  const cached = bgmHowls.get(track)
+  if (cached) return cached
+
   const entry = BGM_CATALOG[track]
-  return new Howl({
+  const howl = new Howl({
     src: entry.src,
     loop: entry.loop,
     volume: 0,
@@ -67,6 +72,44 @@ function getBgmHowl(track: BgmTrack): Howl {
     onloaderror: () =>
       warnOnce(`bgm:${track}`, `[audio] BGM não encontrado: ${track}`),
   })
+  bgmHowls.set(track, howl)
+  return howl
+}
+
+function startBgmPlayback(howl: Howl) {
+  if (bgmHowl !== howl || !currentBgm) return
+
+  const targetVol = effectiveBgmVolume()
+  if (targetVol <= 0) return
+
+  howl.volume(0)
+  const soundId = howl.play()
+  if (soundId === undefined) return
+
+  howl.fade(0, targetVol, BGM_FADE_MS)
+}
+
+function ensureBgmPlaying() {
+  if (!currentBgm || !bgmHowl) return
+  if (bgmHowl.playing()) {
+    bgmHowl.volume(effectiveBgmVolume())
+    return
+  }
+  if (bgmHowl.state() !== 'loaded') {
+    bgmHowl.once('load', () => ensureBgmPlaying())
+    return
+  }
+  startBgmPlayback(bgmHowl)
+}
+
+/** Desbloqueia áudio após gesto do utilizador (política de autoplay). */
+export function unlockAudio() {
+  const ctx = Howler.ctx
+  if (ctx?.state === 'suspended') {
+    void ctx.resume()
+  }
+  audioUnlocked = true
+  ensureBgmPlaying()
 }
 
 export function setAudioVolumes(next: AudioVolumes) {
@@ -75,7 +118,9 @@ export function setAudioVolumes(next: AudioVolumes) {
     howl.volume(effectiveSfxVolume())
   }
   if (bgmHowl) {
-    bgmHowl.volume(effectiveBgmVolume())
+    const vol = effectiveBgmVolume()
+    bgmHowl.volume(vol)
+    if (vol > 0) ensureBgmPlaying()
   }
 }
 
@@ -99,7 +144,10 @@ export function playSfx(
 }
 
 export function setBgm(track: BgmTrack | null) {
-  if (track === currentBgm) return
+  if (track === currentBgm) {
+    ensureBgmPlaying()
+    return
+  }
 
   const prev = bgmHowl
   currentBgm = track
@@ -118,19 +166,13 @@ export function setBgm(track: BgmTrack | null) {
 
   const next = getBgmHowl(track)
   bgmHowl = next
-  const targetVol = effectiveBgmVolume()
 
-  next.once('load', () => {
-    if (bgmHowl !== next) return
-    next.volume(0)
-    next.play()
-    next.fade(0, targetVol, BGM_FADE_MS)
-  })
+  next.once('load', () => startBgmPlayback(next))
 
   if (next.state() === 'loaded') {
-    next.volume(0)
-    next.play()
-    next.fade(0, targetVol, BGM_FADE_MS)
+    startBgmPlayback(next)
+  } else if (audioUnlocked) {
+    ensureBgmPlaying()
   }
 
   if (prev && prev !== next) {
