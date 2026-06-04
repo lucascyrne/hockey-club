@@ -155,7 +155,7 @@ function TableMarkings() {
             <mesh
               key={`corner-${sx}-${sz}`}
               position={[layout.position[0], y, layout.position[2]]}
-              rotation={[-Math.PI / 2, layout.rotation[1], 0]}
+              rotation={[-Math.PI / 2, layout.rotation?.[1] ?? 0, 0]}
             >
               <planeGeometry args={[len, 0.012]} />
               <meshStandardMaterial

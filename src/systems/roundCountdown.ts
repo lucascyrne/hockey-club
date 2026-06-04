@@ -1,4 +1,8 @@
-import { playCountdownPuckSfx, playCountdownTickSfx } from '../audio/events'
+import {
+  playCountdownPuckSfx,
+  playCountdownTickSfx,
+  stopCountdownTickSfx,
+} from '../audio/events'
 import { ROUND_COUNTDOWN_PUCK_MS, ROUND_COUNTDOWN_STEP_MS } from '../constants/game'
 import { isMenuDemoActive } from '../stores/menuDemoStore'
 import { useGameStore } from '../stores/gameStore'
@@ -11,6 +15,7 @@ let sequenceToken = 0
 
 export function cancelRoundCountdown() {
   sequenceToken += 1
+  stopCountdownTickSfx()
   useRoundCountdownStore.getState().setStep(null)
 }
 
@@ -29,14 +34,19 @@ export function beginRoundCountdown() {
   usePuckFlowStore.getState().holdForFaceoff()
   stageFaceoffHold(spawn)
 
-  const numericSteps: Array<1 | 2 | 3> = [1, 2, 3]
+  const numericSteps: Array<3 | 2 | 1> = [3, 2, 1]
   let delay = 0
+
+  const tickToken = token
+  window.setTimeout(() => {
+    if (tickToken !== sequenceToken) return
+    playCountdownTickSfx()
+  }, 0)
 
   for (const step of numericSteps) {
     setTimeout(() => {
       if (token !== sequenceToken) return
       useRoundCountdownStore.getState().setStep(step)
-      playCountdownTickSfx(step)
     }, delay)
     delay += ROUND_COUNTDOWN_STEP_MS
   }

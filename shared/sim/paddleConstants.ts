@@ -21,6 +21,9 @@ export const PADDLE_P2_X_MAX = -PADDLE_CENTER_BUFFER
 
 export const MAX_PADDLE_SPEED = 5
 export const PADDLE_RESPONSE = 28
+export const PADDLE_INPUT_SPEED = 3.2
+export const PADDLE_TRANSFER_FACTOR = 0.45
+export const PADDLE_VELOCITY_SAMPLES = 8
 
 export const PADDLE_PHYSICS = { friction: 0, restitution: 0.92 } as const
 

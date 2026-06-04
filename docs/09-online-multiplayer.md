@@ -28,6 +28,10 @@ Wire encoding: `shared/protocolCodec.ts` (MsgPack binário).
 - Raquete local: predição em `paddleTargets`; remota: `netPaddle` direto.
 - Revanche: ambos clicam Recomeçar → `rematch` → servidor novo `MatchSession` + `match`.
 
+## Paridade física
+
+Colisões, bounds e impulsos disco×raquete vêm de **`shared/sim/`** (mesma lógica que o cliente local offline). O servidor aplica `runPuckPaddleSafety` pós-step e chanfros de canto em `puckBounds`. O cliente online não simula colisões (disco kinematic + sensor); apenas interpola snapshots.
+
 ## Servidor local
 
 ```bash

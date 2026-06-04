@@ -1,5 +1,5 @@
 import {
-  CylinderCollider,
+  BallCollider,
   RigidBody,
   useAfterPhysicsStep,
   useBeforePhysicsStep,
@@ -15,6 +15,7 @@ import {
   DEMO_PUCK_CHUTE_MS,
   PUCK_CHUTE_MS,
 } from '../../constants/game'
+import { getGoalSfxDurationMs } from '../../audio/audioEngine'
 import {
   PUCK_HEIGHT,
   PUCK_MASS,
@@ -51,12 +52,22 @@ import { detectGoal } from '../../systems/rules'
 import { getCpuProfile } from '../../lib/cpuDifficulty'
 import { getMaxPuckSpeed, getPuckLinearDamping } from '../../lib/puckFeel'
 import { useSettingsStore } from '../../stores/settingsStore'
-import { isOnlineMode } from '../../stores/sessionStore'
+import { isOnlineMode, isVsCpuMode } from '../../stores/sessionStore'
+import type { PlayerId } from '../../systems/bounds'
+
 import { netPuck } from '../../lib/onlineNetState'
 
 const PUCK_HALF_HEIGHT = PUCK_HEIGHT / 2
 const HIT_COOLDOWN_MS = 70
 const FLASH_DECAY = 8
+
+function resolveHitStrength(playerId: PlayerId): number {
+  if (playerId === 2 && isVsCpuMode()) {
+    const base = getCpuProfile(useSettingsStore.getState().cpuDifficulty).hitStrength
+    return getCpuStrikeStrength(base)
+  }
+  return 1
+}
 
 function clampPuckVelocity(body: RapierRigidBody, maxSpeed: number) {
   const linvel = body.linvel()
@@ -152,6 +163,8 @@ export function Puck() {
   const [meshVisible, setMeshVisible] = useState(true)
 
   const chuteMs = () => (isMenuDemoActive() ? DEMO_PUCK_CHUTE_MS : PUCK_CHUTE_MS)
+  const goalCelebrationMs = () =>
+    isMenuDemoActive() ? DEMO_PUCK_CHUTE_MS : getGoalSfxDurationMs()
 
   useEffect(() => {
     registerPuckActions({
@@ -202,7 +215,7 @@ export function Puck() {
 
     const otherName = payload.other.rigidBodyObject?.name
     const playerId = parsePaddlePlayerId(otherName)
-    if (playerId === null) return
+    if (playerId !== 1 && playerId !== 2) return
 
     const body = bodyRef.current
     if (!body) return
@@ -214,11 +227,7 @@ export function Puck() {
 
     const pt = other.translation()
     const paddleVel = getPaddleVelocity(playerId)
-    const baseHit =
-      playerId === 2
-        ? getCpuProfile(useSettingsStore.getState().cpuDifficulty).hitStrength
-        : 1
-    const hitStrength = playerId === 2 ? getCpuStrikeStrength(baseHit) : baseHit
+    const hitStrength = resolveHitStrength(playerId)
     resolvePaddlePuckCollision(
       body,
       t.x,
@@ -233,7 +242,7 @@ export function Puck() {
 
     const v = body.linvel()
     const relSpeed = Math.hypot(v.x - paddleVel.x, v.z - paddleVel.z)
-    playHitPaddleSfx(Math.min(1, relSpeed / 8))
+    playHitPaddleSfx(relSpeed)
     const intensity = Math.min(1, relSpeed / 10)
     meshFlash.current = 1
     useArenaFxStore.getState().triggerImpact(intensity)
@@ -300,23 +309,27 @@ export function Puck() {
     if (flow === 'inChute') {
       const { chuteStartMs, chuteFrom, chuteTo } = usePuckFlowStore.getState()
       const elapsed = performance.now() - chuteStartMs
-      const t = elapsed / chuteMs()
+      const chuteT = Math.min(1, elapsed / chuteMs())
 
-      if (t >= 1) {
-        const pos = chuteTo
+      if (chuteT < 1) {
+        const pos = lerpChutePosition(chuteFrom, chuteTo, chuteT)
         body.setTranslation(pos, true)
         body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        setMeshVisible(chuteT < 0.35)
+        setPuckSample({ x: pos.x, z: pos.z, vx: 0, vz: 0 })
+      } else {
+        body.setTranslation(chuteTo, true)
+        body.setLinvel({ x: 0, y: 0, z: 0 }, true)
         setMeshVisible(true)
-        usePuckFlowStore.getState().resetFlow()
-        beginRoundCountdown()
-        return
+        setPuckSample({ x: chuteTo.x, z: chuteTo.z, vx: 0, vz: 0 })
       }
 
-      const pos = lerpChutePosition(chuteFrom, chuteTo, t)
-      body.setTranslation(pos, true)
-      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
-      setMeshVisible(t < 0.35)
-      setPuckSample({ x: pos.x, z: pos.z, vx: 0, vz: 0 })
+      if (
+        elapsed >= goalCelebrationMs() &&
+        useGameStore.getState().phase === 'goal'
+      ) {
+        beginRoundCountdown()
+      }
       return
     }
 
@@ -397,8 +410,8 @@ export function Puck() {
       enabledRotations={[false, true, false]}
       onCollisionEnter={handleCollisionEnter}
     >
-      <CylinderCollider
-        args={[PUCK_HALF_HEIGHT, PUCK_RADIUS]}
+      <BallCollider
+        args={[PUCK_RADIUS]}
         friction={PUCK_PHYSICS.friction}
         restitution={PUCK_PHYSICS.restitution}
         sensor={colliderSensor}

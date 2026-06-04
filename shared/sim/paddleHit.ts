@@ -1,10 +1,94 @@
+import { PADDLE_TRANSFER_FACTOR } from './paddleConstants.js'
 import { MAX_PUCK_SPEED } from './physicsConstants.js'
-import type { PlanarBody } from './puckBounds.js'
+import {
+  clampPlanarSpeed,
+  puckPaddleNormal,
+  PUCK_PADDLE_MIN_DIST,
+  resolvePuckPaddleOverlap,
+  type PlanarVelocity,
+} from './puckContact.js'
+import type { PlanarBody } from './types.js'
 
-const PUCK_PADDLE_MIN_DIST = 0.086
-const PADDLE_TRANSFER_FACTOR = 0.45
+export type { PlanarVelocity } from './puckContact.js'
 
 export function resolvePaddlePuckCollision(
+  puckBody: PlanarBody,
+  puckX: number,
+  puckZ: number,
+  paddleX: number,
+  paddleZ: number,
+  paddleVel: PlanarVelocity,
+  fallbackAwayX = 1,
+  hitStrength = 1,
+  clearTowardEnemyX = fallbackAwayX > 0 ? -1 : 1,
+) {
+  const strength = Math.max(0.2, Math.min(1.5, hitStrength))
+  const { nx, nz, dist } = puckPaddleNormal(
+    puckX,
+    puckZ,
+    paddleX,
+    paddleZ,
+    paddleVel,
+    fallbackAwayX,
+    clearTowardEnemyX,
+  )
+
+  const overlap = PUCK_PADDLE_MIN_DIST - dist
+  if (overlap > 0) {
+    resolvePuckPaddleOverlap(
+      puckBody,
+      puckX,
+      puckZ,
+      paddleX,
+      paddleZ,
+      paddleVel,
+      fallbackAwayX,
+      clearTowardEnemyX,
+    )
+  }
+
+  const v = puckBody.linvel()
+  const relVx = v.x - paddleVel.x
+  const relVz = v.z - paddleVel.z
+  const relNormal = relVx * nx + relVz * nz
+
+  const restitution = 0.88
+  let newVx = v.x
+  let newVz = v.z
+
+  if (relNormal <= 0.25) {
+    const impulseN = -(1 + restitution) * relNormal
+    newVx = v.x + impulseN * nx
+    newVz = v.z + impulseN * nz
+  }
+
+  const paddleSpeed = Math.hypot(paddleVel.x, paddleVel.z)
+  if (overlap > 0.002 && paddleSpeed > 0.08) {
+    const push = (paddleSpeed * PADDLE_TRANSFER_FACTOR + 1.8) * strength
+    newVx = paddleVel.x + nx * push
+    newVz = paddleVel.z + nz * push
+  }
+
+  const outNormal = (newVx - paddleVel.x) * nx + (newVz - paddleVel.z) * nz
+  const minOut = 1.5 * strength
+  if (outNormal < minOut) {
+    const boost = minOut - outNormal
+    newVx += nx * boost
+    newVz += nz * boost
+  }
+
+  if (fallbackAwayX < 0 && strength < 0.85 && newVx < 0) {
+    const gentleMin = 0.55 + strength * 0.9
+    if (newVx < gentleMin) newVx = gentleMin
+  }
+
+  const { x, z } = clampPlanarSpeed(newVx, newVz, MAX_PUCK_SPEED)
+  puckBody.setLinvel({ x, y: 0, z }, true)
+  puckBody.wakeUp()
+}
+
+/** Compat servidor: velocidade escalar. */
+export function resolvePaddlePuckCollisionVel(
   puckBody: PlanarBody,
   puckX: number,
   puckZ: number,
@@ -13,47 +97,17 @@ export function resolvePaddlePuckCollision(
   paddleVx: number,
   paddleVz: number,
   fallbackAwayX: number,
+  hitStrength = 1,
 ) {
-  const dx = puckX - paddleX
-  const dz = puckZ - paddleZ
-  const dist = Math.hypot(dx, dz) || 1e-6
-  let nx = dx / dist
-  let nz = dz / dist
-  if (dist < 1e-4) {
-    nx = fallbackAwayX
-    nz = 0
-  }
-
-  const overlap = PUCK_PADDLE_MIN_DIST - dist
-  if (overlap > 0) {
-    puckBody.setTranslation(
-      { x: puckX + nx * overlap, y: puckBody.translation().y, z: puckZ + nz * overlap },
-      true,
-    )
-  }
-
-  const v = puckBody.linvel()
-  const relNormal = (v.x - paddleVx) * nx + (v.z - paddleVz) * nz
-  const restitution = 0.88
-  let newVx = v.x
-  let newVz = v.z
-
-  if (relNormal < 0) {
-    const impulse = -(1 + restitution) * relNormal
-    newVx += impulse * nx
-    newVz += impulse * nz
-  }
-
-  newVx += paddleVx * PADDLE_TRANSFER_FACTOR
-  newVz += paddleVz * PADDLE_TRANSFER_FACTOR
-
-  const speed = Math.hypot(newVx, newVz)
-  if (speed > MAX_PUCK_SPEED) {
-    const s = MAX_PUCK_SPEED / speed
-    newVx *= s
-    newVz *= s
-  }
-
-  puckBody.setLinvel({ x: newVx, y: 0, z: newVz }, true)
-  puckBody.wakeUp()
+  resolvePaddlePuckCollision(
+    puckBody,
+    puckX,
+    puckZ,
+    paddleX,
+    paddleZ,
+    { x: paddleVx, z: paddleVz },
+    fallbackAwayX,
+    hitStrength,
+    fallbackAwayX > 0 ? -1 : 1,
+  )
 }

@@ -18,6 +18,7 @@ export function stepPaddleMotion(
   targetZ: number,
   playerId: PlayerId,
   delta: number,
+  opts?: { maxSpeed?: number },
 ) {
   const { x: tx, z: tz } = clampPaddlePosition(targetX, targetZ, playerId)
   const dx = tx - motion.x
@@ -25,7 +26,7 @@ export function stepPaddleMotion(
   const blend = 1 - Math.exp(-PADDLE_RESPONSE * delta)
   let moveX = dx * blend
   let moveZ = dz * blend
-  const maxMove = MAX_PADDLE_SPEED * delta
+  const maxMove = (opts?.maxSpeed ?? MAX_PADDLE_SPEED) * delta
   const moveLen = Math.hypot(moveX, moveZ)
   if (moveLen > maxMove) {
     const s = maxMove / moveLen

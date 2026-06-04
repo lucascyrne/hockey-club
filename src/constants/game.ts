@@ -3,7 +3,9 @@ export const GOAL_WIDTH = 0.35
 export const GOAL_HALF_WIDTH = GOAL_WIDTH / 2
 
 export const WIN_TARGET = 7
-/** Duração da calha após gol (ms). */
+/** Duração do clip `goal.ogg` (ms) — overlay GOL! e fase `goal`. Fallback se Howler ainda não carregou. */
+export const GOAL_SFX_MS = 2200
+/** Animação da calha do disco após gol (dentro da celebração). */
 export const PUCK_CHUTE_MS = 400
 export const DEMO_PUCK_CHUTE_MS = 280
 /** Profundidade do disco na calha (m, ao longo de X). */
@@ -30,7 +32,13 @@ export const FACEOFF_SPEED_MAX = 3.2
 /** Desvio do ângulo em radianos (~±20°). */
 export const FACEOFF_ANGLE_JITTER = 0.35
 
-/** Contagem antes do saque lateral (ms por passo 1/2/3). */
-export const ROUND_COUNTDOWN_STEP_MS = 420
+/** Duração do clip `countdown-tick` (ms). */
+export const COUNTDOWN_TICK_CLIP_MS = 2000
+/** Janela dos passos 3→2→1 (ms). */
+export const ROUND_COUNTDOWN_NUMERIC_MS = 2000
+/** Intervalo entre 3, 2 e 1 (ms). */
+export const ROUND_COUNTDOWN_STEP_MS = Math.round(
+  ROUND_COUNTDOWN_NUMERIC_MS / 3,
+)
 /** Exibição de “DISCO” antes do impulso (ms). */
 export const ROUND_COUNTDOWN_PUCK_MS = 620

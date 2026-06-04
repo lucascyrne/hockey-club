@@ -15,6 +15,7 @@ export function PhysicsWorld({ children }: PhysicsWorldProps) {
   )
   const paused = useSessionStore((s) => {
     if (s.screen !== 'match') return false
+    if (s.appHidden) return true
     if (online) {
       return s.hudDrawerOpen || s.settingsOpen
     }

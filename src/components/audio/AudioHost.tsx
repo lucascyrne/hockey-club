@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { setAudioVolumes, setBgm, unlockAudio } from '../../audio/audioEngine'
+import { setAudioVolumes, setBgm, stopBgm } from '../../audio/audioEngine'
+import type { BgmTrack } from '../../audio/types'
 import { playGoalSfx, playWinSfx } from '../../audio/events'
 import { isMenuDemoActive } from '../../stores/menuDemoStore'
 import { useGameStore } from '../../stores/gameStore'
@@ -7,8 +8,15 @@ import { useSessionStore } from '../../stores/sessionStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 
 /** BGM por tela e SFX de gol/vitória (fora do Canvas). */
+function bgmForScreen(screen: string): BgmTrack | null {
+  if (screen === 'menu') return 'menu'
+  if (screen === 'match' || screen === 'onlineLobby') return 'match'
+  return null
+}
+
 export function AudioHost() {
   const screen = useSessionStore((s) => s.screen)
+  const appHidden = useSessionStore((s) => s.appHidden)
   const masterVolume = useSettingsStore((s) => s.masterVolume)
   const sfxVolume = useSettingsStore((s) => s.sfxVolume)
   const bgmVolume = useSettingsStore((s) => s.bgmVolume)
@@ -21,25 +29,14 @@ export function AudioHost() {
   }, [masterVolume, sfxVolume, bgmVolume, muted])
 
   useEffect(() => {
-    const onUnlock = () => unlockAudio()
-    document.addEventListener('pointerdown', onUnlock, { passive: true })
-    document.addEventListener('keydown', onUnlock)
-    return () => {
-      document.removeEventListener('pointerdown', onUnlock)
-      document.removeEventListener('keydown', onUnlock)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (screen === 'menu') {
-      setBgm('menu')
+    if (appHidden) {
+      stopBgm()
       return
     }
-    if (!isMenuDemoActive()) {
-      setBgm('match')
-    }
-    return () => setBgm(null)
-  }, [screen])
+    const track = bgmForScreen(screen)
+    if (track) setBgm(track)
+    else stopBgm()
+  }, [screen, appHidden])
 
   useEffect(() => {
     if (screen !== 'match') return

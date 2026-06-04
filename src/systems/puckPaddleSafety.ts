@@ -1,16 +1,13 @@
 import type { RapierRigidBody } from '@react-three/rapier'
+import { runPuckPaddleSafety as runPuckPaddleSafetyCore } from '../../shared/sim/puckPaddleSafety'
 import { getPaddleVelocity } from '../lib/paddleRegistry'
 import { paddleMotionState } from '../stores/paddleMotionState'
-import { resolvePuckPaddleOverlaps } from './puckContact'
-import { snapPuckToTablePlane } from './puckBounds'
 
-/** Depenetração contínua disco–raquetes (P1 + P2). */
 export function runPuckPaddleSafety(body: RapierRigidBody) {
-  const pos = body.translation()
   const p1 = paddleMotionState.p1
   const p2 = paddleMotionState.p2
 
-  resolvePuckPaddleOverlaps(body, pos.x, pos.z, [
+  runPuckPaddleSafetyCore(body, [
     {
       x: p1.x,
       z: p1.z,
@@ -26,5 +23,4 @@ export function runPuckPaddleSafety(body: RapierRigidBody) {
       clearTowardEnemyX: 1,
     },
   ])
-  snapPuckToTablePlane(body)
 }

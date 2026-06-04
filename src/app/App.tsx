@@ -1,5 +1,6 @@
 import { Leva } from 'leva'
 import { AudioHost } from '../components/audio/AudioHost'
+import { VisibilityHost } from '../components/visibility/VisibilityHost'
 import { ArenaFxBridge } from '../components/game/ArenaFxBridge'
 import { LayoutSync } from '../components/layout/LayoutSync'
 import { LocaleSync } from '../components/i18n/LocaleSync'
@@ -20,6 +21,7 @@ export function App() {
     <div className="app">
       <LayoutSync />
       <LocaleSync />
+      <VisibilityHost />
       <AudioHost />
       <ArenaFxBridge />
       <DevOnly>

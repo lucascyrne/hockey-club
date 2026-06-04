@@ -13,7 +13,7 @@ const hd = TABLE_DEPTH / 2
 describe('tableCorners layout', () => {
   it('canto ++ tem rotY ≈ π/4 e posição com offset para +Z exterior', () => {
     const layout = getCornerChamferLayout(1, 1)
-    expect(layout.rotation[1]).toBeCloseTo(Math.PI / 4, 5)
+    expect(layout.rotation?.[1]).toBeCloseTo(Math.PI / 4, 5)
     expect(layout.position[0]).toBeCloseTo(hw - TABLE_CORNER_CHAMFER / 2 + 0.065, 4)
     expect(layout.position[2]).toBeGreaterThan(hd - TABLE_CORNER_CHAMFER)
   })

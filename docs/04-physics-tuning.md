@@ -5,7 +5,7 @@
 | Entidade | Tipo | Collider | Notas |
 |----------|------|----------|-------|
 | Mesa / paredes | `fixed` | `cuboid` | 4 paredes + opcional tampo sensor |
-| Disco | `dynamic` | `cylinder` (eixo Y) | Único corpo dinâmico principal |
+| Disco | `dynamic` | `ball` | Único corpo dinâmico principal (local + servidor) |
 | Raquete P1/P2 | `kinematicPosition` | `cuboid` ou `ball` | Movida por input, não por forças |
 | Sensor de gol | `fixed` | `cuboid` `sensor=true` | Sem resposta física; dispara regra |
 
@@ -21,6 +21,23 @@
 | max linear speed | 12 m/s (clamp no código) | 8 m/s (velocidade kinematic) | — |
 
 > Valores são ponto de partida; ajustar em Leva e registrar aqui após playtest.
+
+## Fonte única da simulação (`shared/sim/`)
+
+| Módulo | Conteúdo |
+|--------|----------|
+| `physicsConstants.ts` | Timestep, puck, paredes, `TABLE_COLLIDERS` |
+| `paddleConstants.ts` | Raquete, spawns, velocidade máxima |
+| `paddleHit.ts` / `puckContact.ts` | Colisão disco×raquete + depenetração |
+| `puckBounds.ts` | Bounds AABB, chanfros, anti-stick |
+| `puckPaddleSafety.ts` | Passo contínuo disco×raquetes |
+| `rules.ts` / `puckSpawn.ts` | Gol e faceoff |
+
+**Cliente local** (`src/`): adaptadores finos — re-exportam constantes, injetam settings (`paddleFeel`, `puckFeel`), SFX de parede e lógica CPU em `puckContact`.
+
+**Servidor** (`server/src/sim/MatchWorld.ts`): Rapier nativo + mesmos módulos `shared/sim`.
+
+**Modos locais** (vs CPU e 2P) partilham a mesma cena Rapier; diferença é input/IA/câmera, não colliders.
 
 ## Configuração do mundo
 

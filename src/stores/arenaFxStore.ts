@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { GOAL_SFX_MS } from '../constants/game'
 
 type ArenaFxStore = {
   pulse: number
@@ -9,7 +10,7 @@ type ArenaFxStore = {
 }
 
 const PULSE_DECAY = 4.5
-const GOAL_DECAY = 2.2
+const GOAL_DECAY = 1000 / GOAL_SFX_MS
 
 export const useArenaFxStore = create<ArenaFxStore>((set, get) => ({
   pulse: 0,

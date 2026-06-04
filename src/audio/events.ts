@@ -1,46 +1,85 @@
 import { isMenuDemoActive } from '../stores/menuDemoStore'
-import { playSfx } from './audioEngine'
+import { playSfx, replaySfx, stopSfx } from './audioEngine'
+import { HIT_SFX_LEVEL, SFX_PLAYBACK } from './sfxLevels'
 import type { SfxId } from './types'
+import { pickVelocityHitSfx } from './velocityHit'
 
 function canPlayGameAudio() {
   return !isMenuDemoActive()
 }
 
-export function playHitPaddleSfx(impact = 1) {
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v))
+}
+
+function playSfxConfigured(
+  id: SfxId,
+  extra?: { volume?: number; rate?: number },
+  play = playSfx,
+) {
+  const base = SFX_PLAYBACK[id]
+  play(id, {
+    volume: (extra?.volume ?? 1) * base.volume,
+    rate: (extra?.rate ?? 1) * base.rate,
+  })
+}
+
+type HitSfxCurve = (typeof HIT_SFX_LEVEL)[keyof typeof HIT_SFX_LEVEL]
+
+function hitVolume(curve: HitSfxCurve, speed: number, id: SfxId) {
+  const gain = curve.floor + clamp01(speed / curve.speedAtMax) * curve.speedBoost
+  return gain * SFX_PLAYBACK[id].volume
+}
+
+export function playHitPaddleSfx(speed: number) {
   if (!canPlayGameAudio()) return
-  const volume = Math.min(1, 0.35 + impact * 0.12)
-  const rate = 0.95 + Math.random() * 0.1
-  playSfx('hit-paddle', { volume, rate })
+  const { id, rate } = pickVelocityHitSfx('hit-paddle', speed)
+  const volume = hitVolume(HIT_SFX_LEVEL.paddle, speed, id)
+  playSfx(id, { volume, rate: rate * SFX_PLAYBACK[id].rate })
+}
+
+export function playHitWallSfx(speed: number) {
+  if (!canPlayGameAudio()) return
+  const { id, rate } = pickVelocityHitSfx('hit-wall', speed)
+  const volume = hitVolume(HIT_SFX_LEVEL.wall, speed, id)
+  playSfx(id, { volume, rate: rate * SFX_PLAYBACK[id].rate })
 }
 
 export function playGoalSfx() {
   if (!canPlayGameAudio()) return
-  playSfx('goal')
+  playSfxConfigured('goal')
 }
 
 export function playWinSfx() {
   if (!canPlayGameAudio()) return
-  playSfx('win')
+  playSfxConfigured('win')
 }
 
 export function playFaceoffSfx() {
   if (!canPlayGameAudio()) return
-  playSfx('faceoff')
+  playSfxConfigured('faceoff')
 }
 
-const TICK_RATE: Record<1 | 2 | 3, number> = { 1: 0.82, 2: 1, 3: 1.18 }
-
-export function playCountdownTickSfx(step: 1 | 2 | 3) {
+/** Clip único (~2 s) com 3→2→1; tocar uma vez por contagem. */
+export function playCountdownTickSfx() {
   if (!canPlayGameAudio()) return
-  playSfx('countdown-tick', { rate: TICK_RATE[step], volume: 0.95 })
+  playSfxConfigured('countdown-tick', undefined, replaySfx)
+}
+
+export function stopCountdownTickSfx() {
+  stopSfx('countdown-tick')
 }
 
 export function playCountdownPuckSfx() {
   if (!canPlayGameAudio()) return
-  playSfx('countdown-puck', { volume: 1, rate: 1.05 })
+  playSfxConfigured('countdown-puck')
 }
 
 export function playSfxIfAllowed(id: SfxId, options?: Parameters<typeof playSfx>[1]) {
   if (!canPlayGameAudio()) return
-  playSfx(id, options)
+  const base = SFX_PLAYBACK[id]
+  playSfx(id, {
+    volume: (options?.volume ?? 1) * base.volume,
+    rate: (options?.rate ?? 1) * base.rate,
+  })
 }

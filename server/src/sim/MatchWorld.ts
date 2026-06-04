@@ -6,7 +6,8 @@ import {
   enforcePuckTableBounds,
   snapPuckToTablePlane,
 } from '../../../shared/sim/puckBounds.js'
-import { resolvePaddlePuckCollision } from '../../../shared/sim/paddleHit.js'
+import { resolvePaddlePuckCollisionVel } from '../../../shared/sim/paddleHit.js'
+import { runPuckPaddleSafety } from '../../../shared/sim/puckPaddleSafety.js'
 import {
   MAX_PUCK_SPEED,
   PUCK_PHYSICS,
@@ -121,7 +122,7 @@ export class MatchWorld {
       const paddle = this.paddles[playerId]
       const pp = paddle.translation()
       const pv = paddleVel[playerId]
-      resolvePaddlePuckCollision(
+      resolvePaddlePuckCollisionVel(
         this.puck,
         pt.x,
         pt.z,
@@ -132,6 +133,26 @@ export class MatchWorld {
         playerId === 1 ? 1 : -1,
       )
     })
+
+    const pt = this.puck.translation()
+    const p1 = this.paddles[1].translation()
+    const p2 = this.paddles[2].translation()
+    runPuckPaddleSafety(this.puck, [
+      {
+        x: p1.x,
+        z: p1.z,
+        vel: paddleVel[1],
+        awayX: 1,
+        clearTowardEnemyX: -1,
+      },
+      {
+        x: p2.x,
+        z: p2.z,
+        vel: paddleVel[2],
+        awayX: -1,
+        clearTowardEnemyX: 1,
+      },
+    ])
 
     snapPuckToTablePlane(this.puck)
     enforcePuckTableBounds(this.puck)

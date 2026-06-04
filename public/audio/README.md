@@ -6,8 +6,10 @@ Coloque os ficheiros de som nesta pasta. O motor tenta `.ogg` primeiro e `.mp3` 
 
 | Ficheiro | Uso |
 |----------|-----|
-| `hit-paddle.ogg` | Colisão raquete–disco |
-| `hit-wall.ogg` | (reservado) rebate na lateral |
+| `hit-paddle-low.ogg` | Colisão raquete–disco (disco lento) |
+| `hit-paddle-high.ogg` | Colisão raquete–disco (disco rápido) |
+| `hit-wall-low.ogg` | Rebote na lateral / canto (disco lento) |
+| `hit-wall-high.ogg` | Rebote na lateral / canto (disco rápido) |
 | `goal.ogg` | Gol marcado |
 | `faceoff.ogg` | Saque lateral |
 | `countdown-tick.ogg` | Contagem 1 · 2 · 3 (fallback: `faceoff`) |

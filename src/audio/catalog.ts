@@ -11,18 +11,27 @@ type BgmEntry = {
 }
 
 export const SFX_CATALOG: Record<SfxId, SfxEntry> = {
-  'hit-paddle': { src: ['/audio/sfx/hit-paddle.ogg', '/audio/sfx/hit-paddle.mp3'], pool: 4 },
-  'hit-wall': { src: ['/audio/sfx/hit-wall.ogg', '/audio/sfx/hit-wall.mp3'], pool: 2 },
+  'hit-paddle-low': {
+    src: ['/audio/sfx/hit-paddle-low.ogg', '/audio/sfx/hit-paddle-low.mp3'],
+    pool: 3,
+  },
+  'hit-paddle-high': {
+    src: ['/audio/sfx/hit-paddle-high.ogg', '/audio/sfx/hit-paddle-high.mp3'],
+    pool: 3,
+  },
+  'hit-wall-low': {
+    src: ['/audio/sfx/hit-wall-low.ogg', '/audio/sfx/hit-wall-low.mp3'],
+    pool: 2,
+  },
+  'hit-wall-high': {
+    src: ['/audio/sfx/hit-wall-high.ogg', '/audio/sfx/hit-wall-high.mp3'],
+    pool: 2,
+  },
   goal: { src: ['/audio/sfx/goal.ogg', '/audio/sfx/goal.mp3'] },
   faceoff: { src: ['/audio/sfx/faceoff.ogg', '/audio/sfx/faceoff.mp3'] },
   'countdown-tick': {
-    src: [
-      '/audio/sfx/countdown-tick.ogg',
-      '/audio/sfx/countdown-tick.mp3',
-      '/audio/sfx/faceoff.ogg',
-      '/audio/sfx/faceoff.mp3',
-    ],
-    pool: 3,
+    src: ['/audio/sfx/countdown-tick.ogg'],
+    pool: 1,
   },
   'countdown-puck': {
     src: [

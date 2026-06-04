@@ -2,7 +2,7 @@ import type { NetGamePhase, NetPuckFlow, NetPlayerId, SnapshotPayload, WinTarget
 import type { PlayerId } from '../../../shared/sim/bounds.js'
 import { createPlanarMotion, stepPaddleMotion, type PlanarMotion } from '../../../shared/sim/paddleMotion.js'
 import {
-  PUCK_CHUTE_MS,
+  GOAL_SFX_MS,
   ROUND_COUNTDOWN_PUCK_MS,
   ROUND_COUNTDOWN_STEP_MS,
 } from '../../../shared/sim/gameConstants.js'
@@ -94,18 +94,17 @@ export class MatchSession {
     if (this.phase === 'countdown') {
       this.countdownElapsed += dt * 1000
       const t = this.countdownElapsed
-      if (t < ROUND_COUNTDOWN_STEP_MS) this.countdownStep = null
-      else if (t < ROUND_COUNTDOWN_STEP_MS * 2) this.countdownStep = 1
-      else if (t < ROUND_COUNTDOWN_STEP_MS * 3) this.countdownStep = 2
-      else if (t < ROUND_COUNTDOWN_STEP_MS * 4) this.countdownStep = 3
-      else if (t < ROUND_COUNTDOWN_STEP_MS * 4 + ROUND_COUNTDOWN_PUCK_MS) {
+      if (t < ROUND_COUNTDOWN_STEP_MS) this.countdownStep = 3
+      else if (t < ROUND_COUNTDOWN_STEP_MS * 2) this.countdownStep = 2
+      else if (t < ROUND_COUNTDOWN_STEP_MS * 3) this.countdownStep = 1
+      else if (t < ROUND_COUNTDOWN_STEP_MS * 3 + ROUND_COUNTDOWN_PUCK_MS) {
         this.countdownStep = 'puck'
       } else {
         this.startPlayingFromFaceoff()
       }
     } else if (this.phase === 'goal' && this.flow === 'inChute') {
       this.flowElapsed += dt * 1000
-      if (this.flowElapsed >= PUCK_CHUTE_MS) {
+      if (this.flowElapsed >= GOAL_SFX_MS) {
         this.beginCountdown()
       }
     } else if (this.phase === 'playing' && this.flow === 'play') {

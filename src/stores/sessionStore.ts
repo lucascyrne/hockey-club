@@ -16,8 +16,10 @@ type SessionStore = {
   localPlayerId: PlayerId
   hudDrawerOpen: boolean
   settingsOpen: boolean
+  appHidden: boolean
   setHudDrawerOpen: (open: boolean) => void
   setSettingsOpen: (open: boolean) => void
+  setAppHidden: (hidden: boolean) => void
   enterMenu: () => void
   enterOnlineLobby: () => void
   startMatch: (mode: MatchMode) => void
@@ -32,8 +34,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
   localPlayerId: 1,
   hudDrawerOpen: false,
   settingsOpen: false,
+  appHidden: false,
   setHudDrawerOpen: (open) => set({ hudDrawerOpen: open }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setAppHidden: (hidden) => set({ appHidden: hidden }),
 
   enterMenu: () => {
     cancelRoundCountdown()
@@ -119,12 +123,13 @@ export function isOnlineMode() {
 
 /** Partida local pausada com menu lateral ou configurações in-game abertos. */
 export function isLocalMatchPaused() {
-  const { screen, matchMode, hudDrawerOpen, settingsOpen } = useSessionStore.getState()
+  const { screen, matchMode, hudDrawerOpen, settingsOpen, appHidden } =
+    useSessionStore.getState()
   const phase = useGameStore.getState().phase
   return (
     screen === 'match' &&
     matchMode !== 'online' &&
-    (hudDrawerOpen || settingsOpen || phase === 'countdown')
+    (appHidden || hudDrawerOpen || settingsOpen || phase === 'countdown')
   )
 }
-
+

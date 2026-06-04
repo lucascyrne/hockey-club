@@ -34,3 +34,50 @@ export function getCornerChamferLayout(signX: 1 | -1, signZ: 1 | -1): ColliderDe
     args: [halfAlong, WALL_HALF_HEIGHT, WALL_HALF_THICK],
   }
 }
+
+export function cornerDiagonalMaxSum(): number {
+  return hw - chamfer + (hd - chamfer)
+}
+
+export function cornerSignsFromPosition(
+  x: number,
+  z: number,
+): { signX: 1 | -1; signZ: 1 | -1 } | null {
+  if (x === 0 || z === 0) return null
+  return { signX: x > 0 ? 1 : -1, signZ: z > 0 ? 1 : -1 }
+}
+
+export function isPuckInCornerWedge(x: number, z: number): boolean {
+  const signs = cornerSignsFromPosition(x, z)
+  if (!signs) return false
+  const { signX, signZ } = signs
+  const ax = hw - chamfer
+  const az = hd - chamfer
+  if (Math.abs(x) <= ax || Math.abs(z) <= az) return false
+  const sum = signX * x + signZ * z
+  return sum > cornerDiagonalMaxSum() + 1e-5
+}
+
+export function projectToCornerDiagonal(
+  x: number,
+  z: number,
+  signX: 1 | -1,
+  signZ: 1 | -1,
+): { x: number; z: number; nx: number; nz: number } {
+  const x0 = signX * (hw - chamfer)
+  const z0 = signZ * hd
+  const x1 = signX * hw
+  const z1 = signZ * (hd - chamfer)
+  const dx = x1 - x0
+  const dz = z1 - z0
+  const len2 = dx * dx + dz * dz
+  const t =
+    len2 < 1e-10
+      ? 0
+      : Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / len2))
+  const px = x0 + dx * t
+  const pz = z0 + dz * t
+  const nx = -signX / Math.SQRT2
+  const nz = -signZ / Math.SQRT2
+  return { x: px, z: pz, nx, nz }
+}
